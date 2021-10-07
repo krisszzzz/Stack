@@ -1,5 +1,4 @@
 #include "Stack.h"
-#undef realloc
 
 
 ON_DEBUG_LVL_1(

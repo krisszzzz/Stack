@@ -39,7 +39,7 @@ warning_processing_(warning_code, __PRETTY_FUNCTION__, __LINE__)
 #define errors_processing(error_code)                             \
 errors_processing_(error_code, __PRETTY_FUNCTION__, __LINE__)
 
-//#define realloc() DO_NOT_USE_REALLOC
+
 
 enum WARNINGS
 {
