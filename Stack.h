@@ -64,6 +64,8 @@ const int     MIN_CAPACITY       = 8;
 const int     OFFSET_ON_DELETING = 3;
 const __int64 LEFT_CANARY_VALUE  = 0xDEDAD & 0xDEDBAD;
 const __int64 RIGHT_CANARY_VALUE = 0xDED32 & 0xDED64;
+const size_t CANARY_SIZE         = sizeof(__int64);
+const size_t HASH_SIZE           = sizeof(unsigned __int64);
 
 ON_DEBUG_LVL_1(
 void             WarningProccessing_(const int warning_code, const char* function_name,
@@ -75,7 +77,7 @@ int              Max(const int first, const int second);
 void*            recalloc(void* block, size_t elem_count, size_t elem_size);
 unsigned __int64 RSHash(const char* test, size_t obj_size);
 void             SetDataCanary(char* data, size_t size_of_data);
-void             CalculateDataHash(char* data, size_t size_of_data);
+unsigned __int64 CalculateDataHash(char* data, size_t size_of_data);
 void             ResetDataHash(char* data, size_t size_of_data);
 void             ResetDataRightCanary(char* data, size_t size_of_data);
 
@@ -95,7 +97,6 @@ void             ResetDataRightCanary(char* data, size_t size_of_data);
          5. Use these functions to work with the stack, and do not forget to call DtorStackelem_type after work - that is, the stack destructor
 Stack functions description: (Throughout we will assume that elem_type is the type of the element for which the stack was built.)
          6. for debugging see documentation for stack_macros.h
-
   @par   void CtorStack##elem_type(stack_elem_type* to_ctor, ssize_t capacity = 8,void (*printer)(elem_type* to_print) = nullptr)
   Constructor of stack, using a stack without a constructor is an error that can cause the program to close.
   @param[to_ctor] - This is the stack you need to build
@@ -117,9 +118,7 @@ Quite a complicated looking function, but it is only used to make the stack reme
   then the program will exit
   @param[stack_t] - The stack to check
   @return - 0 - if stack correct, else the program will exit
-
   @par void GeneralInfoStackelem_type(const stack_elem_type* stack_t, void(*printer)(elem_type* to_print))
-
 Function for displaying basic information about the stack: about size, about capacity, about the address of
 the stack, about the address of the elements of the stack, about the values ​​of the stack, if there is a print function
 Use this function wisely, because if the stack pointer is null, the program will close
@@ -135,13 +134,12 @@ Use this function wisely, because if the stack pointer is null, the program will
   Sets size and capacity to zero and frees data. After the destructor, you can use the object, but be sure to call the constructor again
   @param[stack_t] - Stack to be destroyed
   @return - its a void-type function, so nothing will be returned
-
   @warning When debug level is 0, always initialize the stack before calling the constructor,
   otherwise the program will crash. If the debug level is 1 or 2, then it will be guaranteed that
   the program will correctly create the stack.
-
 */
-
+  //  printf("%ld %ld", *(unsigned __int64*)data_hash, CalculateDataHash((char*)stack_t->data, stack_t->capacity * sizeof(elem_type)));\
+//
 
 
 #define Stack_T(elem_type)                                                                                     \
@@ -240,12 +238,13 @@ void ValidateStack_##elem_type(const stack_##elem_type* stack_t)				            
         ErrorsProccessing(STACK_CAPACITY_IS_INCCORECT);                                                     \
     }                                                                                                       \
     ON_DEBUG_LVL_1(                                                                                         \
+        size_t all_elements_size = stack_t->capacity * sizeof(elem_type);                                   \
+                                                                                                            \
         if(*(__int64*)stack_t->data != LEFT_CANARY_VALUE) {                                                 \
             GeneralInfoStack_##elem_type(stack_t);                                                          \
             ErrorsProccessing(STACK_DATA_LEFT_CANARY_IS_INCCORECT);                                         \
         }                                                                                                   \
-        char* stack_data_right_canary = (char*)stack_t->data +                                              \
-                                         stack_t->capacity * sizeof(elem_type) + sizeof(__int64);           \
+        char* stack_data_right_canary = (char*)stack_t->data + all_elements_size + CANARY_SIZE;             \
                                                                                                             \
         if(*(__int64*)stack_data_right_canary != RIGHT_CANARY_VALUE) {                                      \
             GeneralInfoStack_##elem_type(stack_t);                                                          \
@@ -254,10 +253,22 @@ void ValidateStack_##elem_type(const stack_##elem_type* stack_t)				            
                                                                                                             \
     )                                                                                                       \
                                                                                                             \
+    ON_DEBUG_LVL_2(                                                                                         \
+        char* data_hash = (char*)stack_t->data + all_elements_size + 2 * CANARY_SIZE;                       \
+                                                                                                            \
+        if(*(unsigned __int64*)data_hash != CalculateDataHash((char*) stack_t->data,                        \
+                                                               all_elements_size)) {                        \
+                                                                                                            \
+             GeneralInfoStack_##elem_type(stack_t);                                                         \
+             ErrorsProccessing(STACK_DATA_HASH_IS_INCCORECT);                                               \
+        }                                                                                                   \
+                                                                                                            \
+    )                                                                                                       \
+                                                                                                            \
 }                                                                                                           \
                                                                                                             \
 void SafeGeneralInfoStack_##elem_type(const stack_##elem_type* stack_t,                                     \
-                                     void (*printer)(const elem_type* to_print) = nullptr)                  \
+                                      void (*printer)(const elem_type* to_print) = nullptr)                 \
 {                                                                                                           \
     ValidateStack_##elem_type(stack_t);                                                                     \
     GeneralInfoStack_##elem_type(stack_t, printer);                                                         \
@@ -273,6 +284,7 @@ void CtorStack_##elem_type(stack_##elem_type* stack_t, ssize_t capacity = MIN_CA
             return;                                                                                         \
         }                                                                                                   \
     )                                                                                                       \
+                                                                                                            \
     ON_DEBUG_LVL_1(                                                                                         \
         if(capacity < 0) {                                                                                  \
             WarningProccessing(INCCORECT_CAPACITY_INPUT_TO_CTOR);                                           \
@@ -286,30 +298,34 @@ void CtorStack_##elem_type(stack_##elem_type* stack_t, ssize_t capacity = MIN_CA
 		*stack_t = null_initialized; 																		\
     )                                                                                                       \
                                                                                                             \
-    int        to_alloc_capacity = Max(MIN_CAPACITY, capacity);                                             \
+    int to_alloc_capacity        = Max(MIN_CAPACITY, capacity);                                             \
+    size_t all_elements_size     = to_alloc_capacity * sizeof(elem_type);                                   \
     elem_type* data              = nullptr;                                                                 \
                                                                                                             \
 	stack_t->capacity            = to_alloc_capacity;                                                       \
 	stack_t->size                = 0;               														\
-    data                         = (elem_type*)calloc(to_alloc_capacity * sizeof(elem_type) +               \
-                                    STACK_PROT * sizeof(__int64), sizeof(char));                            \
+    data                         = (elem_type*)calloc(all_elements_size +                                   \
+                                    STACK_PROT * CANARY_SIZE, sizeof(char));                                \
                                                                                                             \
     if(data == nullptr) {                                                                                   \
         ErrorsProccessing(MEMORY_ALLOCATION_ERROR);                                                         \
     }                                                                                                       \
     ON_DEBUG_LVL_1(                                                                                         \
-        SetDataCanary((char*)data, to_alloc_capacity * sizeof(elem_type));                                  \
-        stack_t->left_canary = LEFT_CANARY_VALUE;                                                           \
+        SetDataCanary((char*)data, all_elements_size);                                                      \
+        stack_t->left_canary  = LEFT_CANARY_VALUE;                                                          \
         stack_t->right_canary = RIGHT_CANARY_VALUE;                                                         \
-    )                                                                                                       \
-    ON_DEBUG_LVL_2(                                                                                         \
-        stack_t->hash = RSHash((char*)stack_t, sizeof(stack_##elem_type) - sizeof(__int64));                \
-        CalculateDataHash((char*)data, to_alloc_capacity * sizeof(elem_type));                              \
     )                                                                                                       \
                                                                                                             \
     stack_t->data = data;                                                                                   \
                                                                                                             \
-    printf("OK"); \                                                                                                           
+    ON_DEBUG_LVL_2(                                                                                         \
+        stack_t->hash = RSHash((char*)stack_t, sizeof(stack_##elem_type) - HASH_SIZE);                      \
+        char* data_hash = (char*)stack_t->data + all_elements_size + 2 * CANARY_SIZE;                       \
+        *(unsigned __int64*)data_hash = CalculateDataHash((char*)data, all_elements_size);                  \
+    )                                                                                                       \
+                                                                                                            \
+                                                                                                            \
+                                                                                                            \
 	ValidateStack_##elem_type(stack_t);                                                                     \
     GeneralInfoStack_##elem_type(stack_t, printer);                                                         \
     PrintToLog("Construction are successfull\n");                                                           \
@@ -320,6 +336,7 @@ void CtorStack_##elem_type(stack_##elem_type* stack_t, ssize_t capacity = MIN_CA
 void StackPush_##elem_type(stack_##elem_type* stack_t, elem_type* value)		                            \
 {                                                                                                           \
     ValidateStack_##elem_type(stack_t);                                                                     \
+                                                                                                            \
     ON_DEBUG_LVL_1(                                                                                         \
         PrintToLog("The push function has been called, name of the function - %s\n",                        \
                       __PRETTY_FUNCTION__);                                                                 \
@@ -329,21 +346,17 @@ void StackPush_##elem_type(stack_##elem_type* stack_t, elem_type* value)		      
     )                                                                                                       \
                                                                                                             \
     if(stack_t->size == stack_t->capacity) {                                                                \
+        size_t all_elements_size = stack_t->capacity * sizeof(elem_type);                                   \
         elem_type* data = (elem_type*)recalloc(stack_t->data,                                               \
-                                               2 * stack_t->capacity * sizeof(elem_type) +                  \
-                                               STACK_PROT * sizeof(__int64),                                \     
+                                               2 * all_elements_size + STACK_PROT * CANARY_SIZE,            \
                                                sizeof(char));                                               \
                                                                                                             \
         if(data == nullptr) {                                                                               \
             ErrorsProccessing(MEMORY_ALLOCATION_ERROR);                                                     \
         }                                                                                                   \
         ON_DEBUG_LVL_1(                                                                                     \
-            ResetDataRightCanary((char*)data, stack_t->capacity * sizeof(elem_type));                       \
-            SetDataCanary((char*)data, 2 * stack_t->capacity * sizeof(elem_type));                          \
-            ON_DEBUG_LVL_2(                                                                                 \
-                ResetDataHash((char*)data, stack_t->capacity * sizeof(elem_type));                          \
-                CalculateDataHash((char*)data, 2 * stack_t->capacity * sizeof(elem_type));                  \
-            )                                                                                               \
+            ResetDataRightCanary((char*)data, all_elements_size);                                           \
+            SetDataCanary((char*)data, 2 * all_elements_size);                                              \
         )                                                                                                   \
                                                                                                             \
         stack_t->capacity *= 2;                                                                             \
@@ -353,16 +366,17 @@ void StackPush_##elem_type(stack_##elem_type* stack_t, elem_type* value)		      
                                                                stack_t->capacity);                          \
         )                                                                                                   \
     }                                                                                                       \
-                                                                                                            \
-    elem_type* after_extreme_element_address = (elem_type*)((char*)stack_t->data +                          \
-                                                            DATA_CANARY_OFFSET * sizeof(__int64) +          \
-                                                            stack_t->size * sizeof(elem_type));             \
+    size_t all_elements_size = stack_t->capacity * sizeof(elem_type);                                       \
+    elem_type* after_extreme_element_address = (elem_type*)((char*)stack_t->data + CANARY_SIZE +            \
+                                                            all_elements_size);                             \
     *after_extreme_element_address = *value;                                                                \
-                                                                                                            \
     stack_t->size++;                                                                                        \
+                                                                                                            \
     ON_DEBUG_LVL_2(                                                                                         \
-    stack_t->hash = RSHash((char*)stack_t, sizeof(stack_##elem_type) - sizeof(__int64));                    \
-    CalculateDataHash((char*)stack_t->data, stack_t->capacity * sizeof(elem_type) + 2*sizeof(__int64));     \
+                                                                                                            \
+    stack_t->hash = RSHash((char*)stack_t, sizeof(stack_##elem_type) - HASH_SIZE);                          \
+      char* data_hash = (char*)stack_t->data + all_elements_size + 2 * CANARY_SIZE;                         \
+    *(unsigned __int64*)data_hash = CalculateDataHash((char*)stack_t->data, all_elements_size);             \
     )                                                                                                       \
                                                                                                             \
     ON_DEBUG_LVL_1(                                                                                         \
@@ -396,27 +410,28 @@ elem_type StackPop_##elem_type(stack_##elem_type* stack_t)					                 
     ValidateStack_##elem_type(stack_t);                                                                     \
                                                                                                             \
     void (*pop_printer)(const elem_type* to_print) = SetPrinter_##elem_type();					            \
-                                                                                                            \
+    size_t all_elements_size = stack_t->capacity * sizeof(elem_type);                                       \
 	if(!IsEmptyStack_##elem_type(stack_t)) {													            \
 		if((stack_t->size <= stack_t->capacity / 2 - OFFSET_ON_DELETING) &&                                 \
             stack_t->capacity / 2 >= MIN_CAPACITY) {                                                        \
                                                                                                             \
 			elem_type* data = (elem_type*)recalloc(stack_t->data,                                           \
-                                                   stack_t->capacity / 2 + STACK_PROT * sizeof(__int64),    \
-                                                   sizeof(elem_type));                                      \
+                                                   all_elements_size / 2 + STACK_PROT * CANARY_SIZE,        \
+                                                   sizeof(char));                                           \
                                                                                                             \
 			if(data == nullptr) {                                                                           \
                 ErrorsProccessing(MEMORY_ALLOCATION_ERROR);                                                 \
 			}                                                                                               \
+			ON_DEBUG_LVL_1(                                                                                 \
+                SetDataCanary((char*)data, all_elements_size / 2);                                          \
+            )                                                                                               \
 			stack_t->capacity /= 2;                                                                         \
 			stack_t->data = data;                                                                           \
         }                                                                                                   \
                                                                                                             \
         ON_DEBUG_LVL_1(                                                                                     \
-            ssize_t element_in_data_index      = stack_t->size - 1;                                         \
-            elem_type* extreme_element_address = (elem_type*)((char*)stack_t->data +                        \
-                                                               DATA_CANARY_OFFSET * sizeof(__int64) +       \
-                                                               element_in_data_index * sizeof(elem_type));  \
+            elem_type* extreme_element_address = (elem_type*)((char*)stack_t->data + CANARY_SIZE +          \
+                                                               all_elements_size - sizeof(elem_type));      \
                                                                                                             \
 			elem_type extreme_element_value   =  *(extreme_element_address);                                \
 			*extreme_element_address = {0};                                                                 \
@@ -434,8 +449,10 @@ elem_type StackPop_##elem_type(stack_##elem_type* stack_t)					                 
             }                                                                                               \
                                                                                                             \
 			ON_DEBUG_LVL_2(                                                                                 \
-                stack_t->hash = RSHash((char*)stack_t, sizeof(stack_##elem_type) - sizeof(__int64));        \
-                CalculateDataHash((char*)stack_t->data, stack_t->capacity * sizeof(elem_type));             \
+                stack_t->hash = RSHash((char*)stack_t, sizeof(stack_##elem_type) - HASH_SIZE);              \
+                char* data_hash = (char*)stack_t->data + (all_elements_size / 2) + 2 * CANARY_SIZE;         \
+                *(unsigned __int64*)data_hash = CalculateDataHash((char*)stack_t->data,                     \
+                                                                  all_elements_size / 2);                   \
                 GeneralInfoStack_##elem_type(stack_t);                                                      \
             )                                                                                               \
 			return extreme_element_value;                                                                   \
@@ -461,7 +478,7 @@ void DtorStack_##elem_type(stack_##elem_type* stack_t)							                   
     free(stack_t->data);                                                                                    \
     stack_t->data = nullptr;																	            \
     ON_DEBUG_LVL_1(                                                                                         \
-     stack_t->left_canary  = 0;                                                                             \
+     stack_t->left_canary = 0;                                                                              \
     stack_t->right_canary = 0;                                                                              \
     )                                                                                                       \
     ON_DEBUG_LVL_2(                                                                                         \
