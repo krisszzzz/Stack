@@ -4,13 +4,7 @@
 #include<assert.h>
 #include<string.h>
 #include "log.h"
-
 #define DEBUG_LVL 2
-#define malloc() DO_NOT_USE_MALLOC
-
-#define STACK_USE_HASH   0x01
-#define STACK_USE_CANARY 0x02
-
 
 #if DEBUG_LVL == 2
 #define ON_DEBUG_LVL_2(code)  code
@@ -31,14 +25,16 @@
 
 #if DEBUG_LVL >= 1
 #define DATA_CANARY_OFFSET 1
-#define warning_processing(warning_code)                          \
-warning_processing_(warning_code, __PRETTY_FUNCTION__, __LINE__)
+#define WarningProccessing(warning_code)                          \
+WarningProccessing_(warning_code, __PRETTY_FUNCTION__, __LINE__)
 #endif
 
 
-#define errors_processing(error_code)                             \
-errors_processing_(error_code, __PRETTY_FUNCTION__, __LINE__)
+#define ErrorsProccessing(error_code)                             \
+ErrorsProccessing_(error_code, __PRETTY_FUNCTION__, __LINE__)
 
+#define STACK_USE_HASH   0x01
+#define STACK_USE_CANARY 0x02
 
 
 enum WARNINGS
@@ -70,17 +66,18 @@ const __int64 LEFT_CANARY_VALUE  = 0xDEDAD & 0xDEDBAD;
 const __int64 RIGHT_CANARY_VALUE = 0xDED32 & 0xDED64;
 
 ON_DEBUG_LVL_1(
-void             warning_processing_(const int warning_code, const char* function_name,
+void             WarningProccessing_(const int warning_code, const char* function_name,
                                      const int line);
 )
 
-void             errors_processing_(const int error, const char* funct, const int line);
-int              max(const int first, const int second);
+void             ErrorsProccessing_(const int error, const char* funct, const int line);
+int              Max(const int first, const int second);
 void*            recalloc(void* block, size_t elem_count, size_t elem_size);
-unsigned __int64 rs_hash(const char* test, size_t obj_size);
-void             set_data_canary(char* data, size_t size_of_data);
-void             calculate_data_hash(char* data, size_t size_of_data);
-// в general_info убрана проверка
+unsigned __int64 RSHash(const char* test, size_t obj_size);
+void             SetDataCanary(char* data, size_t size_of_data);
+void             CalculateDataHash(char* data, size_t size_of_data);
+void             ResetDataHash(char* data, size_t size_of_data);
+void             ResetDataRightCanary(char* data, size_t size_of_data);
 
 /*!@file    Stack.h
    \brief The core of the program. Here is the stack template - a macro analogue of C ++ templates for the C programming language.
@@ -91,14 +88,15 @@ void             calculate_data_hash(char* data, size_t size_of_data);
          this will mean that the program is in the release state.
          2. After that, the program will build the necessary structure, which will be called struct_elem_type where elem_type is the type
          of the object for which the stack was created.
-         3. In total, the program creates 9 functions: is_empty_stack_elem_type, dtor_stack_elem_type, stack_push_elem_type, stack_pop_elem_type,
-         ctor_stack_elem_type, is_invalid_stack_elem_type, is_invalid_stack_elem_type, general_info_elem_type, assert_nullptr_stack_elem_type - where
+         3. In total, the program creates 9 functions: IsEmptyStackelem_type, DtorStackelem_type, StackPushelem_type, StackPopelem_type,
+         CtorStack##elem_type, Validation, GeneralInfoelem_type, AssertNullptrStack##elem_typestack_elem_type - where
          elem_type is the type of object for which you need stack.
          4. Write an inference function of your type to improve debugging
-         5. Use these functions to work with the stack, and do not forget to call dtor_stack_elem_type after work - that is, the stack destructor
+         5. Use these functions to work with the stack, and do not forget to call DtorStackelem_type after work - that is, the stack destructor
 Stack functions description: (Throughout we will assume that elem_type is the type of the element for which the stack was built.)
+         6. for debugging see documentation for stack_macros.h
 
-  @par   void ctor_stack_elem_type(stack_elem_type* to_ctor, ssize_t capacity = 8,void (*printer)(elem_type* to_print) = nullptr)
+  @par   void CtorStack##elem_type(stack_elem_type* to_ctor, ssize_t capacity = 8,void (*printer)(elem_type* to_print) = nullptr)
   Constructor of stack, using a stack without a constructor is an error that can cause the program to close.
   @param[to_ctor] - This is the stack you need to build
   @param[capacity] - the capacity of the stack, that is, the number of elements that the stack can store. Note that the stack is dynamic, so you don't
@@ -107,7 +105,7 @@ Stack functions description: (Throughout we will assume that elem_type is the ty
                        doesn't know how to print an arbitrary type. If you do not specify this pointer, then the stack will simply deduce that it does
                        not know how to print your data type. How to write a function to output a printer? See description below
   @return - its a void-type function, so nothing will be returned
-  @par  void (*set_printer_elem_type(void(*printer)(elem_type* to_print) = nullptr))(elem_type* to_print)
+  @par  void (*SetPrinterelem_type(void(*printer)(elem_type* to_print) = nullptr))(elem_type* to_print)
 Quite a complicated looking function, but it is only used to make the stack remember your printer function.
   @param[(*printer)] - a pointer to a function that you need to write yourself. This function should print your elem_type correctly, because the stack
                        doesn't know how to print an arbitrary type. If you do not specify this pointer, then the stack will simply deduce that it does
@@ -120,20 +118,20 @@ Quite a complicated looking function, but it is only used to make the stack reme
   @param[stack_t] - The stack to check
   @return - 0 - if stack correct, else the program will exit
 
-  @par void general_info_stack_elem_type(const stack_elem_type* stack_t, void(*printer)(elem_type* to_print))
+  @par void GeneralInfoStackelem_type(const stack_elem_type* stack_t, void(*printer)(elem_type* to_print))
 
 Function for displaying basic information about the stack: about size, about capacity, about the address of
 the stack, about the address of the elements of the stack, about the values ​​of the stack, if there is a print function
 Use this function wisely, because if the stack pointer is null, the program will close
   @param[stack_t] - The stack for which basic information is displayed.
-  @param[(*printer)] -  It is inside this function that the stack calls set_printer_elem_type, that is,
+  @param[(*printer)] -  It is inside this function that the stack calls SetPrinterelem_type, that is,
   in this function it sets up the print function, which is passed through the constructor as an argument to this function.
   @return  - its a void-type function, so nothing will be returned
-  @par void assert_nullptr_stack_elem_type(const stack_elem_type* stack_t)
+  @par void AssertNullptrStack##elem_typestack_elem_type(const stack_elem_type* stack_t)
   Checks stack_t if it is a null pointer, if yes, then the program is closed
   @param[stack_t] - a pointer to the stack, which is checked against a null pointer
   @return - its a void-type function, so nothing will be returned
-  @par void dtor_stack_elem_type(stack_elem_type* stack_t)
+  @par void DtorStackelem_type(stack_elem_type* stack_t)
   Sets size and capacity to zero and frees data. After the destructor, you can use the object, but be sure to call the constructor again
   @param[stack_t] - Stack to be destroyed
   @return - its a void-type function, so nothing will be returned
@@ -146,7 +144,7 @@ Use this function wisely, because if the stack pointer is null, the program will
 
 
 
-#define stack_template(elem_type)                                                                              \
+#define Stack_T(elem_type)                                                                                     \
 struct stack_##elem_type {																					   \
                                                                                                                \
     ON_DEBUG_LVL_1(                                                                                            \
@@ -166,17 +164,16 @@ struct stack_##elem_type {																					   \
 };                                                                                                             \
                                                                                                                \
                                                                                                                \
-                                                                                                               \
-void assert_nullptr_stack_##elem_type(const stack_##elem_type * stack_t)                                       \
+void AssertNullptrStack_##elem_type (const stack_##elem_type * stack_t)                                        \
 {                                                                                                              \
     if(stack_t == nullptr) {                                                                                   \
-        errors_processing(NULLPTR_STACK);                                                                      \
+        ErrorsProccessing(NULLPTR_STACK);                                                                      \
     }                                                                                                          \
 }                                                                                                              \
                                                                                                                \
-void (*set_printer_##elem_type(void (*printer)(elem_type* to_print) = nullptr))(elem_type* to_print)           \
+void (*SetPrinter_##elem_type(void (*printer)(const elem_type* to_print) = nullptr))(const elem_type* to_print)\
 {                                                                                                              \
-    static void (*stat_printer)(elem_type* to_print) = nullptr;                                                \
+    static void (*stat_printer)(const elem_type* to_print) = nullptr;                                          \
     if(printer != nullptr) {                                                                                   \
         stat_printer = printer;                                                                                \
     }                                                                                                          \
@@ -185,104 +182,111 @@ void (*set_printer_##elem_type(void (*printer)(elem_type* to_print) = nullptr))(
 }                                                                                                              \
                                                                                                                \
                                                                                                                \
-void general_info_stack_##elem_type (const stack_##elem_type* stack_t,                                         \
-                                     void (*printer)(elem_type* to_print) = nullptr)                           \
+void GeneralInfoStack_##elem_type (const stack_##elem_type* stack_t,                                           \
+                                     void (*printer)(const elem_type* to_print) = nullptr)                     \
 {                                                                                                              \
-    void (*ctor_printer)(elem_type* to_print) = set_printer_##elem_type(printer);                              \
-    assert_nullptr_stack_##elem_type(stack_t);                                                                 \
+    void (*ctor_printer)(const elem_type* to_print) = SetPrinter_##elem_type(printer);                         \
+    AssertNullptrStack_##elem_type(stack_t);                                                                   \
                                                                                                                \
                                                                                                                \
-    print_to_log("Stack info: stack address = %p, stack type - %s, stack size = %d, "                          \
+    PrintToLog("Stack info: stack address = %p, stack type - %s, stack size = %d, "                            \
                  "stack capacity = %d, stack data = %p\n", stack_t, #elem_type, stack_t->size,                 \
                                                            stack_t->capacity,   stack_t->data);                \
                                                                                                                \
     for(int elem_of_data = 0; elem_of_data < stack_t->size; ++elem_of_data)                                    \
     {                                                                                                          \
-        elem_type* current_element_address = (int*)((char*)stack_t->data +                                     \
+        const elem_type* current_element_address = (const elem_type*)((char*)stack_t->data +                   \
                                                     DATA_CANARY_OFFSET * sizeof(__int64) +                     \
                                                     elem_of_data * sizeof(elem_type));                         \
-        print_to_log("&[%d] == %p\n", elem_of_data, current_element_address);                               \
+        PrintToLog("&[%d] == %p\n", elem_of_data, current_element_address);                                 \
         if(ctor_printer != nullptr) {                                                                       \
-            print_to_log("*[%d] == ", elem_of_data);                                                        \
+            PrintToLog("*[%d] == ", elem_of_data);                                                          \
             ctor_printer(current_element_address);                                                          \
-            print_to_log("\n");                                                                             \
+            PrintToLog("\n");                                                                               \
         }                                                                                                   \
                                                                                                             \
     }                                                                                                       \
                                                                                                             \
 }                                                                                                           \
                                                                                                             \
-void validate_stack_##elem_type(const stack_##elem_type* stack_t)					                        \
+void ValidateStack_##elem_type(const stack_##elem_type* stack_t)				                            \
 {                                                                                                           \
-    assert_nullptr_stack_##elem_type(stack_t);                                                              \
+    AssertNullptrStack_##elem_type(stack_t);                                                                \
                                                                                                             \
     ON_DEBUG_LVL_1(                                                                                         \
         if(stack_t->left_canary != LEFT_CANARY_VALUE) {                                                     \
-            errors_processing(STACK_LEFT_CANARY_IS_INCCORECT);                                              \
+            ErrorsProccessing(STACK_LEFT_CANARY_IS_INCCORECT);                                              \
         }                                                                                                   \
         if(stack_t->right_canary != RIGHT_CANARY_VALUE) {                                                   \
-            errors_processing(STACK_RIGHT_CANARY_IS_INCCORECT);                                             \
+            ErrorsProccessing(STACK_RIGHT_CANARY_IS_INCCORECT);                                             \
         }                                                                                                   \
                                                                                                             \
     )                                                                                                       \
                                                                                                             \
     if(stack_t->size < 0) {                                                                                 \
-        general_info_stack_##elem_type(stack_t);                                                            \
-        errors_processing(STACK_SIZE_IS_NEGATIVE);                                                          \
+        GeneralInfoStack_##elem_type(stack_t);                                                              \
+        ErrorsProccessing(STACK_SIZE_IS_NEGATIVE);                                                          \
     }                                                                                                       \
 	if(stack_t->size > stack_t->capacity) {                                                                 \
-        general_info_stack_##elem_type(stack_t);                                                            \
-        errors_processing(STACK_SIZE_BIGGER_THAN_CAPACITY);                                                 \
+        GeneralInfoStack_##elem_type(stack_t);                                                              \
+        ErrorsProccessing(STACK_SIZE_BIGGER_THAN_CAPACITY);                                                 \
     }                                                                                                       \
     if(stack_t->data == nullptr) {                                                                          \
-        general_info_stack_##elem_type(stack_t);                                                            \
-        errors_processing(STACK_DATA_NULLPTR);                                                              \
+        GeneralInfoStack_##elem_type(stack_t);                                                              \
+        ErrorsProccessing(STACK_DATA_NULLPTR);                                                              \
     }                                                                                                       \
     if(stack_t->capacity < MIN_CAPACITY) {                                                                  \
-        general_info_stack_##elem_type(stack_t);                                                            \
-        errors_processing(STACK_CAPACITY_IS_INCCORECT);                                                     \
+        GeneralInfoStack_##elem_type(stack_t);                                                              \
+        ErrorsProccessing(STACK_CAPACITY_IS_INCCORECT);                                                     \
     }                                                                                                       \
     ON_DEBUG_LVL_1(                                                                                         \
         if(*(__int64*)stack_t->data != LEFT_CANARY_VALUE) {                                                 \
-            general_info_stack_##elem_type(stack_t);                                                        \
-            errors_processing(STACK_DATA_LEFT_CANARY_IS_INCCORECT);                                         \
+            GeneralInfoStack_##elem_type(stack_t);                                                          \
+            ErrorsProccessing(STACK_DATA_LEFT_CANARY_IS_INCCORECT);                                         \
         }                                                                                                   \
         char* stack_data_right_canary = (char*)stack_t->data +                                              \
                                          stack_t->capacity * sizeof(elem_type) + sizeof(__int64);           \
                                                                                                             \
         if(*(__int64*)stack_data_right_canary != RIGHT_CANARY_VALUE) {                                      \
-            general_info_stack_##elem_type(stack_t);                                                        \
-            errors_processing(STACK_DATA_RIGHT_CANARY_IS_INCCORECT);                                        \
+            GeneralInfoStack_##elem_type(stack_t);                                                          \
+            ErrorsProccessing(STACK_DATA_RIGHT_CANARY_IS_INCCORECT);                                        \
         }                                                                                                   \
                                                                                                             \
     )                                                                                                       \
                                                                                                             \
 }                                                                                                           \
                                                                                                             \
-void ctor_stack_##elem_type(stack_##elem_type* stack_t, ssize_t capacity = MIN_CAPACITY,					\
-                            void (*printer)(elem_type* to_print) = nullptr)                                 \
+void SafeGeneralInfoStack_##elem_type(const stack_##elem_type* stack_t,                                     \
+                                     void (*printer)(const elem_type* to_print) = nullptr)                  \
 {                                                                                                           \
-    assert_nullptr_stack_##elem_type(stack_t);                                                              \
+    ValidateStack_##elem_type(stack_t);                                                                     \
+    GeneralInfoStack_##elem_type(stack_t, printer);                                                         \
+}                                                                                                           \
+                                                                                                            \
+void CtorStack_##elem_type(stack_##elem_type* stack_t, ssize_t capacity = MIN_CAPACITY,					    \
+                            void (*printer)(const elem_type* to_print) = nullptr)                           \
+{                                                                                                           \
+    AssertNullptrStack_##elem_type(stack_t);                                                                \
     ON_DEBUG_LVL_1(                                                                                         \
         if(stack_t->left_canary == LEFT_CANARY_VALUE || stack_t->right_canary == RIGHT_CANARY_VALUE) {      \
-            warning_processing(ALREADY_CONSTRUCTED);                                                        \
+            WarningProccessing(ALREADY_CONSTRUCTED);                                                        \
             return;                                                                                         \
         }                                                                                                   \
     )                                                                                                       \
     ON_DEBUG_LVL_1(                                                                                         \
         if(capacity < 0) {                                                                                  \
-            warning_processing(INCCORECT_CAPACITY_INPUT_TO_CTOR);                                           \
+            WarningProccessing(INCCORECT_CAPACITY_INPUT_TO_CTOR);                                           \
         }                                                                                                   \
                                                                                                             \
 		stack_##elem_type null_initialized = {0};                                                           \
 		if(memcmp(stack_t, &null_initialized, sizeof(elem_type)) != 0) {                                    \
-			warning_processing(NOT_INITIALIZED_STACK);                                                      \
+			WarningProccessing(NOT_INITIALIZED_STACK);                                                      \
         }                                                                                                   \
                                                                                                             \
 		*stack_t = null_initialized; 																		\
     )                                                                                                       \
                                                                                                             \
-    int        to_alloc_capacity = max(MIN_CAPACITY, capacity);                                             \
+    int        to_alloc_capacity = Max(MIN_CAPACITY, capacity);                                             \
     elem_type* data              = nullptr;                                                                 \
                                                                                                             \
 	stack_t->capacity            = to_alloc_capacity;                                                       \
@@ -291,51 +295,61 @@ void ctor_stack_##elem_type(stack_##elem_type* stack_t, ssize_t capacity = MIN_C
                                     STACK_PROT * sizeof(__int64), sizeof(char));                            \
                                                                                                             \
     if(data == nullptr) {                                                                                   \
-        errors_processing(MEMORY_ALLOCATION_ERROR);                                                         \
+        ErrorsProccessing(MEMORY_ALLOCATION_ERROR);                                                         \
     }                                                                                                       \
     ON_DEBUG_LVL_1(                                                                                         \
-        set_data_canary((char*)data, to_alloc_capacity * sizeof(elem_type));                                \
+        SetDataCanary((char*)data, to_alloc_capacity * sizeof(elem_type));                                  \
+        stack_t->left_canary = LEFT_CANARY_VALUE;                                                           \
+        stack_t->right_canary = RIGHT_CANARY_VALUE;                                                         \
     )                                                                                                       \
     ON_DEBUG_LVL_2(                                                                                         \
-        stack_t->hash = rs_hash((char*)stack_t, sizeof(stack_##elem_type) - sizeof(__int64));               \
-        calculate_data_hash((char*)data, to_alloc_capacity * sizeof(elem_type));                            \
+        stack_t->hash = RSHash((char*)stack_t, sizeof(stack_##elem_type) - sizeof(__int64));                \
+        CalculateDataHash((char*)data, to_alloc_capacity * sizeof(elem_type));                              \
     )                                                                                                       \
                                                                                                             \
     stack_t->data = data;                                                                                   \
-    ON_DEBUG_LVL_1(                                                                                         \
-        stack_t->left_canary  = LEFT_CANARY_VALUE;                                                          \
-        stack_t->right_canary = RIGHT_CANARY_VALUE;                                                         \
-    )                                                                                                       \
-	validate_stack_##elem_type(stack_t);                                                                    \
-    general_info_stack_##elem_type(stack_t, printer);                                                       \
-    print_to_log("Construction are successfull\n");                                                         \
+                                                                                                            \
+    printf("OK"); \                                                                                                           
+	ValidateStack_##elem_type(stack_t);                                                                     \
+    GeneralInfoStack_##elem_type(stack_t, printer);                                                         \
+    PrintToLog("Construction are successfull\n");                                                           \
+                                                                                                            \
                                                                                                             \
 }																									        \
                     																				        \
-void stack_push_##elem_type(stack_##elem_type* stack_t, elem_type* value)		                            \
+void StackPush_##elem_type(stack_##elem_type* stack_t, elem_type* value)		                            \
 {                                                                                                           \
-    validate_stack_##elem_type(stack_t);                                                                    \
+    ValidateStack_##elem_type(stack_t);                                                                     \
     ON_DEBUG_LVL_1(                                                                                         \
-        print_to_log("The push function has been called, name of the function - %s\n",                      \
+        PrintToLog("The push function has been called, name of the function - %s\n",                        \
                       __PRETTY_FUNCTION__);                                                                 \
     )                                                                                                       \
     ON_DEBUG_LVL_2(                                                                                         \
-        general_info_stack_##elem_type(stack_t);                                                            \
+        GeneralInfoStack_##elem_type(stack_t);                                                              \
     )                                                                                                       \
                                                                                                             \
     if(stack_t->size == stack_t->capacity) {                                                                \
         elem_type* data = (elem_type*)recalloc(stack_t->data,                                               \
-                                               2 * stack_t->capacity + STACK_PROT * sizeof(__int64),        \
+                                               2 * stack_t->capacity * sizeof(elem_type) +                  \
+                                               STACK_PROT * sizeof(__int64),                                \     
                                                sizeof(char));                                               \
                                                                                                             \
         if(data == nullptr) {                                                                               \
-            free(stack_t->data);                                                                            \
-            errors_processing(MEMORY_ALLOCATION_ERROR);                                                     \
+            ErrorsProccessing(MEMORY_ALLOCATION_ERROR);                                                     \
         }                                                                                                   \
+        ON_DEBUG_LVL_1(                                                                                     \
+            ResetDataRightCanary((char*)data, stack_t->capacity * sizeof(elem_type));                       \
+            SetDataCanary((char*)data, 2 * stack_t->capacity * sizeof(elem_type));                          \
+            ON_DEBUG_LVL_2(                                                                                 \
+                ResetDataHash((char*)data, stack_t->capacity * sizeof(elem_type));                          \
+                CalculateDataHash((char*)data, 2 * stack_t->capacity * sizeof(elem_type));                  \
+            )                                                                                               \
+        )                                                                                                   \
+                                                                                                            \
         stack_t->capacity *= 2;                                                                             \
         stack_t->data      = data;                                                                          \
         ON_DEBUG_LVL_1(                                                                                     \
-            print_to_log("Memory reallocated from %d to %d\n", stack_t->capacity / 2,                       \
+            PrintToLog("Memory reallocated from %d to %d\n", stack_t->capacity / 2,                         \
                                                                stack_t->capacity);                          \
         )                                                                                                   \
     }                                                                                                       \
@@ -347,43 +361,43 @@ void stack_push_##elem_type(stack_##elem_type* stack_t, elem_type* value)		     
                                                                                                             \
     stack_t->size++;                                                                                        \
     ON_DEBUG_LVL_2(                                                                                         \
-    stack_t->hash = rs_hash((char*)stack_t, sizeof(stack_##elem_type) - sizeof(__int64));                   \
-    calculate_data_hash((char*)stack_t->data, stack_t->capacity * sizeof(elem_type));                       \
+    stack_t->hash = RSHash((char*)stack_t, sizeof(stack_##elem_type) - sizeof(__int64));                    \
+    CalculateDataHash((char*)stack_t->data, stack_t->capacity * sizeof(elem_type) + 2*sizeof(__int64));     \
     )                                                                                                       \
                                                                                                             \
     ON_DEBUG_LVL_1(                                                                                         \
-        void (*push_printer)(elem_type* printer) = set_printer_##elem_type();                               \
-        print_to_log("The push the function has finished its work,"                                         \
+        void (*push_printer)(const elem_type* to_print) = SetPrinter_##elem_type();                         \
+        PrintToLog("The push the function has finished its work,"                                           \
                      " pushed element adress = %p, value = ", value);                                       \
                                                                                                             \
         if(push_printer == nullptr) {                                                                       \
-            print_to_log("UNKNOWN, because you did not pass "                                               \
+            PrintToLog("UNKNOWN, because you did not pass "                                                 \
                          "the printer () function to the constructor\n");                                   \
         } else {                                                                                            \
             push_printer(value);                                                                            \
-            print_to_log("\n");                                                                             \
+            PrintToLog("\n");                                                                               \
         }                                                                                                   \
                                                                                                             \
         ON_DEBUG_LVL_2(                                                                                     \
-            general_info_stack_##elem_type(stack_t);                                                        \
+            GeneralInfoStack_##elem_type(stack_t);                                                          \
         )                                                                                                   \
     )                                                                                                       \
 }                                                                                                           \
                                                                                                             \
-int is_empty_stack_##elem_type(stack_##elem_type* stack_t)											        \
+int IsEmptyStack_##elem_type(stack_##elem_type* stack_t)										            \
 {																									        \
-    validate_stack_##elem_type(stack_t);                                                                    \
+    ValidateStack_##elem_type(stack_t);                                                                     \
                                                                                                             \
     return (stack_t->size == 0) ? 1 : 0;																    \
 }                                                                                                           \
                                                                                                             \
-elem_type stack_pop_##elem_type(stack_##elem_type* stack_t)					                                \
+elem_type StackPop_##elem_type(stack_##elem_type* stack_t)					                                \
 {                                                                                                           \
-    validate_stack_##elem_type(stack_t);                                                                    \
+    ValidateStack_##elem_type(stack_t);                                                                     \
                                                                                                             \
-    void (*pop_printer)(elem_type* to_print) = set_printer_##elem_type();					                \
+    void (*pop_printer)(const elem_type* to_print) = SetPrinter_##elem_type();					            \
                                                                                                             \
-	if(!is_empty_stack_##elem_type(stack_t)) {														        \
+	if(!IsEmptyStack_##elem_type(stack_t)) {													            \
 		if((stack_t->size <= stack_t->capacity / 2 - OFFSET_ON_DELETING) &&                                 \
             stack_t->capacity / 2 >= MIN_CAPACITY) {                                                        \
                                                                                                             \
@@ -392,8 +406,7 @@ elem_type stack_pop_##elem_type(stack_##elem_type* stack_t)					                
                                                    sizeof(elem_type));                                      \
                                                                                                             \
 			if(data == nullptr) {                                                                           \
-                free(stack_t->data);                                                                        \
-                errors_processing(MEMORY_ALLOCATION_ERROR);                                                 \
+                ErrorsProccessing(MEMORY_ALLOCATION_ERROR);                                                 \
 			}                                                                                               \
 			stack_t->capacity /= 2;                                                                         \
 			stack_t->data = data;                                                                           \
@@ -408,22 +421,22 @@ elem_type stack_pop_##elem_type(stack_##elem_type* stack_t)					                
 			elem_type extreme_element_value   =  *(extreme_element_address);                                \
 			*extreme_element_address = {0};                                                                 \
                                                                                                             \
-            print_to_log("Popped element address = %p, value = ",                                           \
+            PrintToLog("Popped element address = %p, value = ",                                             \
                          extreme_element_address, extreme_element_value);                                   \
             --stack_t->size;                                                                                \
                                                                                                             \
             if(pop_printer == nullptr) {                                                                    \
-                print_to_log("UNKNOWN, because you did not pass the printer"                                \
+                PrintToLog("UNKNOWN, because you did not pass the printer"                                  \
                              " () function to the constructor\n");                                          \
             } else {                                                                                        \
                 pop_printer(&extreme_element_value);                                                        \
-                print_to_log("\n");                                                                         \
+                PrintToLog("\n");                                                                           \
             }                                                                                               \
                                                                                                             \
 			ON_DEBUG_LVL_2(                                                                                 \
-                stack_t->hash = rs_hash((char*)stack_t, sizeof(stack_##elem_type) - sizeof(__int64));       \
-                calculate_data_hash((char*)stack_t->data, stack_t->capacity * sizeof(elem_type));           \
-                general_info_stack_##elem_type(stack_t);                                                    \
+                stack_t->hash = RSHash((char*)stack_t, sizeof(stack_##elem_type) - sizeof(__int64));        \
+                CalculateDataHash((char*)stack_t->data, stack_t->capacity * sizeof(elem_type));             \
+                GeneralInfoStack_##elem_type(stack_t);                                                      \
             )                                                                                               \
 			return extreme_element_value;                                                                   \
         )                                                                                                   \
@@ -433,19 +446,20 @@ elem_type stack_pop_##elem_type(stack_##elem_type* stack_t)					                
 	} else {																								\
         ON_DEBUG_LVL_1(                                                                                     \
 	    elem_type null_initialized = {0};																	\
-	    warning_processing(STACK_UNDERFLOW);                                                                \
+	    WarningProccessing(STACK_UNDERFLOW);                                                                \
 		return null_initialized;																			\
         )                                                                                                   \
     }																										\
 }																											\
-void dtor_stack_##elem_type(stack_##elem_type* stack_t)							                            \
+void DtorStack_##elem_type(stack_##elem_type* stack_t)							                            \
 {                                                                                                           \
-    print_to_log("Destructor call for stack: \n");                                                          \
-    validate_stack_##elem_type(stack_t);                                                                    \
-    general_info_stack_##elem_type(stack_t);															    \
+    PrintToLog("Destructor call for stack: \n");                                                            \
+    ValidateStack_##elem_type(stack_t);                                                                     \
+    GeneralInfoStack_##elem_type(stack_t);															        \
                                                                                                             \
-    stack_t->size         = stack_t->capacity = 0;                                                          \
-    stack_t->data         = nullptr;																	    \
+    stack_t->size = stack_t->capacity = 0;                                                                  \
+    free(stack_t->data);                                                                                    \
+    stack_t->data = nullptr;																	            \
     ON_DEBUG_LVL_1(                                                                                         \
      stack_t->left_canary  = 0;                                                                             \
     stack_t->right_canary = 0;                                                                              \
@@ -453,6 +467,6 @@ void dtor_stack_##elem_type(stack_##elem_type* stack_t)							                  
     ON_DEBUG_LVL_2(                                                                                         \
     stack_t->hash         = 0;                                                                              \
     )                                                                                                       \
-    free(stack_t->data);                                                                                    \
-    print_to_log("Object destructed, you can reuse it, please use constructor for this case\n");            \
+                                                                                                            \
+    PrintToLog("Object destructed, you can reuse it, please use constructor for this case\n");              \
 }
