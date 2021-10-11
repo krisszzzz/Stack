@@ -6,7 +6,7 @@
 
 static int NUM_OF_CALLING = 0;
 FILE* LOG_FILE = stderr;
-static int USING_PrintToLog_AFTER_FORGET_LOG = 0;
+static int USING_PRINT_TO_LOG_AFTER_FORGET_LOG = 0;
 
 
 void RememberLogFile(FILE* log_file = nullptr)
@@ -29,7 +29,7 @@ void ForgetLogFile()
     if(LOG_FILE != stderr)
     {
         fclose(LOG_FILE);
-        USING_PrintToLog_AFTER_FORGET_LOG = 1;
+        USING_PRINT_TO_LOG_AFTER_FORGET_LOG = 1;
     }
     NUM_OF_CALLING--;
     LOG_FILE = stderr;

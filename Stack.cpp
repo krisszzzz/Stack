@@ -105,33 +105,39 @@ void* recalloc(void* block, size_t elem_count, size_t elem_size)
 	return realloc(block, elem_count * elem_size);
 }
 
+ON_DEBUG_LVL_1(
+
 void SetDataCanary(char* data, size_t size_of_data)
 {
     *(__int64*)data = LEFT_CANARY_VALUE;
-    data += size_of_data + sizeof(__int64);
+    data += size_of_data + CANARY_SIZE;
     *(__int64*)data = RIGHT_CANARY_VALUE;
-}
-
-unsigned __int64 CalculateDataHash(char* data, size_t size_of_data)
-{
-    int num_of_canaries     = 2;
-
-    return RSHash((char*)data, size_of_data + num_of_canaries * sizeof(__int64));
 }
 
 void ResetDataRightCanary(char* data, size_t size_of_data)
 {
-    data += size_of_data + sizeof(__int64);
+    data += size_of_data + CANARY_SIZE;
     *(__int64*)data = 0;
 }
 
-void ResetDataHash(char* data, size_t size_of_data)
+)
+
+ON_DEBUG_LVL_2(
+
+unsigned __int64 CalculateDataHash(char* data, size_t size_of_data)
 {
-    int num_of_canaries     = 2;
-    char* hash_address      = data + size_of_data + num_of_canaries * sizeof(__int64);
-    *(__int64*)hash_address = 0;
+    return RSHash((char*)data, size_of_data + STACK_USE_CANARY * CANARY_SIZE);
 }
 
+)
+
+/*
+void ResetDataHash(char* data, size_t size_of_data)
+{
+    char* hash_address      = data + size_of_data + STACK_USE_CANARY * CANARY_SIZE;
+    *(__int64*)hash_address = 0;
+}
+*/
 unsigned __int64 RSHash(const char* test, size_t obj_size)                     //!--------------------------------------------------------------------------------------
 {                                                                               //! 
     unsigned __int64 a = 63689;
