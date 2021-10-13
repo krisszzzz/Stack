@@ -1,6 +1,6 @@
 #include "Stack.h"
 
-///
+
 ON_DEBUG_LVL_1(
 
 void WarningProccessing_(const int warning_code, const char* function_name,
@@ -70,19 +70,19 @@ void ErrorsProccessing_(const int error_code, const char* function_name, const i
         }
         case STACK_HASH_IS_INCCORECT:  {
                 PrintToLog("ERROR: STACK_HASH_IS_INCCORECT, your stack was corrupted\n");
-                assert("ERROR: STACK_HASH_IS_INCCORECT, your stack was corrupted\n");
+                assert(!"ERROR: STACK_HASH_IS_INCCORECT, your stack was corrupted\n");
         }
         case STACK_SIZE_IS_NEGATIVE: {
                 PrintToLog("ERROR: STACK_SIZE_IS_NEGATIVE, stack size can't be negative\n");
-                assert("ERROR: STACK_SIZE_IS_NEGATIVE, stack size can't be negative\n");
+                assert(!"ERROR: STACK_SIZE_IS_NEGATIVE, stack size can't be negative\n");
         }
         case STACK_SIZE_BIGGER_THAN_CAPACITY:  {
                 PrintToLog("ERROR: STACK_SIZE_BIGGER_THAN_CAPACITY, stack size can't be bigger than capacity\n");
-                assert("ERROR: STACK_SIZE_BIGGER_THAN_CAPACITY, stack size can't be bigger than capacity\n");
+                assert(!"ERROR: STACK_SIZE_BIGGER_THAN_CAPACITY, stack size can't be bigger than capacity\n");
         }
         case STACK_RIGHT_CANARY_IS_INCCORECT:  {
                 PrintToLog("ERROR: STACK_RIGHT_CANARY_IS_INCCORECT, your stack right canary has been changed\n");
-                assert("ERROR: STACK_RIGHT_CANARY_IS_INCCORECT, your stack right canary has been changed\n");
+                assert(!"ERROR: STACK_RIGHT_CANARY_IS_INCCORECT, your stack right canary has been changed\n");
         }
         case STACK_LEFT_CANARY_IS_INCCORECT:  {
                 PrintToLog("ERROR: STACK_LEFT_CANARY_IS_INCCORECT, your stack left canary has been changed\n");
@@ -147,6 +147,7 @@ unsigned __int64 RSHash(const char* test, size_t obj_size)                     /
     for (int i = 0; i < obj_size; ++i)
     {
         hash = hash * a + (unsigned __int64)test[i];
+        a *= b;
     }
 
     return hash;
