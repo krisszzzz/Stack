@@ -33,18 +33,18 @@ void RunUnitTests(int* array, int array_size, void (*printer)(const int*))
 
     stack_int integer_stack = {};
     CtorStack_int(&integer_stack, 10, printer);     // Check the Ctor and Dtor works. Also check what happen when ctor and dtor multiple called
-    //CtorStack_int(&integer_stack);                // We allow you to reuse your after destruction, but use Ctor to correct work
+    CtorStack_int(&integer_stack);                // We allow you to reuse your after destruction, but use Ctor to correct work
     //DtorStack_int(&integer_stack);                // Multiple Ctor calling is bad, but the program guarantees that it will continue
-    //DtorStack_int(&integer_stack);                // its work, but you will lose access to the data of the previous constructed stack
-   // CtorStack_int(&integer_stack, 10);            // Multiple Dtor calling will close your program with error
+    DtorStack_int(&integer_stack);                // its work, but you will lose access to the data of the previous constructed stack
+    CtorStack_int(&integer_stack, 10);            // Multiple Dtor calling will close your program with error
 
     for(int stack_size_count = 0; stack_size_count < array_size; ++stack_size_count) // push array_size numbers from the array onto the stack
         StackPush_int(&integer_stack, &array[stack_size_count]);
 
-    IsEmptyStack_int(&integer_stack);           // Test all stack functions. Warning: don't use GeneralInfoStack_int, use SafeGeneralInfoStack_int instead
-    ValidateStack_int(&integer_stack);          // For description of all function watch the documantion
-    AssertNullptrStack_int(&integer_stack);     //
-    GeneralInfoStack_int(&integer_stack);       //
+    IsEmptyStack_int        (&integer_stack);           // Test all stack functions. Warning: don't use GeneralInfoStack_int, use SafeGeneralInfoStack_int instead
+    ValidateStack_int       (&integer_stack);          // For description of all function watch the documantion
+    AssertNullptrStack_int  (&integer_stack);     //
+    GeneralInfoStack_int    (&integer_stack);       //
     SafeGeneralInfoStack_int(&integer_stack);
 
     int test_count = 0;
@@ -53,7 +53,7 @@ void RunUnitTests(int* array, int array_size, void (*printer)(const int*))
     while(test_count < array_size)
     {
         int last_stack_element = StackPop_int(&integer_stack);  //Mini test that shows how the protection system against stack underflow
-        //StackPop_int(&integer_stack);
+        StackPop_int(&integer_stack);
         printf("%d", last_stack_element);
         StackPush_int(&integer_stack, &last_stack_element);
         test_count++;

@@ -37,10 +37,10 @@ void ForgetLogFile()
 
 int PrintToLog(const char* format, ...)
 {
-    if(USING_PrintToLog_AFTER_FORGET_LOG) {
+    if(USING_PRINT_TO_LOG_AFTER_FORGET_LOG) {
         printf("WARNING: you use PrintToLog() after you used ForgetLogFile() "
                 "the log file has been configured as stderr by default\n");
-        USING_PrintToLog_AFTER_FORGET_LOG = 0;
+        USING_PRINT_TO_LOG_AFTER_FORGET_LOG = 0;
     }
 
     va_list arg_ptr;

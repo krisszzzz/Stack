@@ -38,16 +38,16 @@ const size_t  CANARY_SIZE        = sizeof(__int64);
 const size_t  HASH_SIZE          = sizeof(unsigned __int64);
 
 ON_DEBUG_LVL_1(
-void             WarningProccessing_(const int warning_code, const char* function_name,
-                                     const int line);
+void             WarningProccessing_ (const int warning_code, const char* function_name,
+                                      const int line);
 )
 
-void             ErrorsProccessing_(const int error, const char* funct, const int line);
-int              Max(const int first, const int second);
-void*            recalloc(void* block, size_t elem_count, size_t elem_size);
-unsigned __int64 RSHash(const char* test, size_t obj_size);
-void             SetDataCanary(char* data, size_t size_of_data);
-unsigned __int64 CalculateDataHash(char* data, size_t size_of_data);
+void             ErrorsProccessing_  (const int error, const char* funct, const int line);
+int              Max                 (const int first, const int second);
+void*            recalloc            (void* block, size_t elem_count, size_t elem_size);
+unsigned __int64 RSHash              (const char* test, size_t obj_size);
+void             SetDataCanary       (char* data, size_t size_of_data);
+unsigned __int64 CalculateDataHash   (char* data, size_t size_of_data);
 void             ResetDataRightCanary(char* data, size_t size_of_data);
 
 
@@ -98,7 +98,7 @@ void GeneralInfoStack_##elem_type (const stack_##elem_type* stack_t,            
                                                                                                                \
     PrintToLog("Stack info: stack address = %p, stack type - %s, stack size = %d, "                            \
                  "stack capacity = %d, stack data = %p\n", stack_t, #elem_type, stack_t->size,                 \
-                                                           stack_t->capacity,   stack_t->data);                \
+                                                           stack_t->capacity, stack_t->data);                  \
                                                                                                                \
     for(int elem_of_data = 0; elem_of_data < stack_t->size; ++elem_of_data)                                    \
     {                                                                                                          \
@@ -370,9 +370,10 @@ elem_type StackPop_##elem_type(stack_##elem_type* stack_t)					                 
                                                                                                             \
 			ON_DEBUG_LVL_2(                                                                                 \
                 size_t all_elements_size        = stack_t->capacity * sizeof(elem_type);                    \
-                stack_t->hash                   = RSHash((char*)stack_t, sizeof(stack_##elem_type) - HASH_SIZE); \
-                char* data_hash                 = (char*)stack_t->data + all_elements_size + 2 * CANARY_SIZE;    \
-                *(unsigned __int64*) data_hash  = CalculateDataHash((char*)stack_t->data, all_elements_size);    \
+                stack_t->hash                   = RSHash((char*)stack_t, sizeof(stack_##elem_type) - HASH_SIZE);\
+                char* data_hash                 = (char*)stack_t->data + all_elements_size +                \
+                                                   STACK_USE_CANARY * CANARY_SIZE;                          \
+                *(unsigned __int64*) data_hash  = CalculateDataHash((char*)stack_t->data, all_elements_size); \
                 GeneralInfoStack_##elem_type(stack_t);                                                      \
             )                                                                                               \
 			return extreme_element_value;                                                                   \
@@ -398,11 +399,11 @@ void DtorStack_##elem_type(stack_##elem_type* stack_t)							                   
     free(stack_t->data);                                                                                    \
     stack_t->data = nullptr;																	            \
     ON_DEBUG_LVL_1(                                                                                         \
-     stack_t->left_canary  = 0;                                                                             \
-    stack_t->right_canary = 0;                                                                              \
+        stack_t->left_canary  = 0;                                                                          \
+        stack_t->right_canary = 0;                                                                          \
     )                                                                                                       \
     ON_DEBUG_LVL_2(                                                                                         \
-    stack_t->hash         = 0;                                                                              \
+        stack_t->hash         = 0;                                                                          \
     )                                                                                                       \
                                                                                                             \
     PrintToLog("Object destructed, you can reuse it, please use constructor for this case\n");              \
