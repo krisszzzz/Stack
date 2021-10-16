@@ -1,4 +1,9 @@
 ﻿
+
+#ifndef STACK_INCLUDED
+
+#define STACK_INCLUDED
+
 #include<stdlib.h>
 #include<stdio.h>
 #include<assert.h>
@@ -45,18 +50,18 @@ const size_t  kCanarySize        = sizeof(__int64);
 const size_t  kHashSize          = sizeof(unsigned __int64);
 
 ON_DEBUG_LVL_1(
-void             Warning_Proccessing_ (const int warning_code, const char* function_name,
-                                       const int line,         const char* file_name);
+void             Warning_Proccessing_(const int warning_code, const char* function_name,
+                                      const int line,         const char* file_name);
 )
 
-void             Error_Proccessing_  (const int error,         const char* funct, 
-                                      const int line,          const char* flie_name);
-int              Max                 (const int first,         const int second);
-void*            recalloc            (void* block,             size_t elem_count, size_t elem_size);
-unsigned __int64 RSHash              (const char* test,        size_t obj_size);
-void             SetDataCanary       (char* data,              size_t size_of_data);
-unsigned __int64 CalculateDataHash   (char* data,              size_t size_of_data);
-void             ResetDataRightCanary(char* data,              size_t size_of_data);
+void             Error_Proccessing_  (const int error,        const char* funct, 
+                                      const int line,         const char* flie_name);
+int              Max                 (const int first,        const int second);
+void*            recalloc            (void* block,            size_t elem_count, size_t elem_size);
+unsigned __int64 RSHash              (const char* test,       size_t obj_size);
+void             SetDataCanary       (char* data,             size_t size_of_data);
+unsigned __int64 CalculateDataHash   (char* data,             size_t size_of_data);
+void             ResetDataRightCanary(char* data,             size_t size_of_data);
 
 
 #define Stack_T(elem_type)                                                                                     \
@@ -111,7 +116,7 @@ void GeneralInfoStack_##elem_type (const stack_##elem_type* stack_t,            
     PrintToLog("-------------------------------------------------------------------------------\n");           \                                                                                                            
     PrintToLog("Stack info:\n stack address: %p, stack type: %s, stack size: %d, "                             \
                  "stack capacity: %d, stack data address: %p\n", stack_t, #elem_type, stack_t->size,           \
-                                                           stack_t->capacity, stack_t->data);                  \
+                                                                 stack_t->capacity,   stack_t->data);          \
                                                                                                                \
     for(int elem_of_data = 0; elem_of_data < stack_t->size; ++elem_of_data)                                    \
     {                                                                                                          \
@@ -120,9 +125,9 @@ void GeneralInfoStack_##elem_type (const stack_##elem_type* stack_t,            
                                                     elem_of_data * sizeof(elem_type));                         \
         PrintToLog("&[%d] == %p\n", elem_of_data, current_element_address);                                    \
         if(ctor_printer != nullptr) {                                                                          \
-            PrintToLog("*[%d] == ", elem_of_data);                                                             \
+            PrintToLog  ("*[%d] == ", elem_of_data);                                                           \
             ctor_printer(current_element_address);                                                          \
-            PrintToLog("\n");                                                                               \
+            PrintToLog  ("\n");                                                                             \
         }                                                                                                   \
                                                                                                             \
     }                                                                                                       \
@@ -196,7 +201,7 @@ int IsInvalidStack_##elem_type(const stack_##elem_type* stack_t)				            
 void SafeGeneralInfoStack_##elem_type(const stack_##elem_type* stack_t,                                     \
                                       void (*printer)(const elem_type* to_print) = nullptr)                 \
 {                                                                                                           \
-    if(IsInvalidStack_##elem_type(stack_t) == kErroredStack);                                               \
+    if(IsInvalidStack_##elem_type(stack_t) == kErroredStack)                                                \
         return;                                                                                             \
     GeneralInfoStack_##elem_type(stack_t, printer);                                                         \
 }                                                                                                           \
@@ -428,7 +433,7 @@ void DtorStack_##elem_type(stack_##elem_type* stack_t)							                   
     PrintToLog("Object destructed, you can reuse it, please use constructor for this case\n");              \
 }
 
-
+#endif
 
 
 /*!@file    Stack.h
