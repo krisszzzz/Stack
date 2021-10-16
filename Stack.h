@@ -142,17 +142,17 @@ int IsInvalidStack_##elem_type(const stack_##elem_type* stack_t)				            
     ON_DEBUG_LVL_1(                                                                                         \
          MAKE_STACK_INVARIANT(                                                                              \
             elem_type,                                                                                      \
-            stack_t->left_canary != kLeftCanaryValue                                                        \
+            stack_t->left_canary == kLeftCanaryValue                                                        \
         )                                                                                                   \
         MAKE_STACK_INVARIANT(                                                                               \
             elem_type,                                                                                      \
-            stack_t->right_canary != kRightCanaryValue                                                      \
+            stack_t->right_canary == kRightCanaryValue                                                      \
         )                                                                                                   \
     )                                                                                                       \
     ON_DEBUG_LVL_2(                                                                                         \
     MAKE_STACK_INVARIANT(                                                                                   \
         elem_type,                                                                                          \
-        stack_t->hash != RSHash((char*)stack_t, sizeof(stack_##elem_type) - kHashSize)                      \
+        stack_t->hash == RSHash((char*)stack_t, sizeof(stack_##elem_type) - kHashSize)                      \
     )                                                                                                       \
     )                                                                                                       \
      MAKE_STACK_INVARIANT(                                                                                  \
@@ -169,7 +169,7 @@ int IsInvalidStack_##elem_type(const stack_##elem_type* stack_t)				            
     )                                                                                                       \
     MAKE_STACK_INVARIANT(                                                                                   \
         elem_type,                                                                                          \
-        stack_t->capacity > kMinCapacity                                                                    \
+        stack_t->capacity >= kMinCapacity                                                                   \
     )                                                                                                       \
     ON_DEBUG_LVL_1(                                                                                         \
         size_t all_elements_size = stack_t->capacity * sizeof(elem_type);                                   \
@@ -437,22 +437,22 @@ void DtorStack_##elem_type(stack_##elem_type* stack_t)							                   
 
 
 /*!@file    Stack.h
-   \brief The core of the program. Here is the stack template - a macro analogue of C ++ templates for the C programming language.
+   \brief The core of the program. Here is the stack template - a macros analogue of C ++ templates for the C programming language.
    @par   How to use?
    @note Instruction:
-         1. When you start a project write stack template (elem_type) where elem_type is the type of object for which you need a stack.
+         1. When you start a project write Stack_T (elem_type) where elem_type is the type of object for which you need a stack.
          Also, do not forget that if you want to use the program already as ready-made and tested, then set the DEBUG_LEVEL value to 0,
          this will mean that the program is in the release state.
          2. After that, the program will build the necessary structure, which will be called struct_elem_type where elem_type is the type
          of the object for which the stack was created.
-         3. In total, the program creates 9 functions: IsEmptyStackelem_type, DtorStackelem_type, StackPushelem_type, StackPopelem_type,
-         CtorStack##elem_type, Validation, GeneralInfoelem_type, IsNullptrStack##elem_typestack_elem_type - where
+         3. In total, the program creates 9 functions: IsEmptyStack_elem_type, DtorStack_elem_type, StackPush_elem_type, StackPop_elem_type,
+         CtorStack_elem_type, IsInvalidStack_elem_type, GeneralInfoStack_elem_type, IsNullptrStack_elem_type - where
          elem_type is the type of object for which you need stack.
          4. Write an inference function of your type to improve debugging
-         5. Use these functions to work with the stack, and do not forget to call DtorStackelem_type after work - that is, the stack destructor
+         5. Use these functions to work with the stack, and do not forget to call DtorStack_elem_type after work - that is, the stack destructor
 Stack functions description: (Throughout we will assume that elem_type is the type of the element for which the stack was built.)
          6. for debugging see documentation for stack_macros.h
-  @par   void CtorStack##elem_type(stack_elem_type* to_ctor, ssize_t capacity = 8,void (*printer)(elem_type* to_print) = nullptr)
+  @par   void CtorStack_elem_type(stack_elem_type* to_ctor, ssize_t capacity = 8,void (*printer)(elem_type* to_print) = nullptr)
   Constructor of stack, using a stack without a constructor is an error that can cause the program to close.
   @param[to_ctor] - This is the stack you need to build
   @param[capacity] - the capacity of the stack, that is, the number of elements that the stack can store. Note that the stack is dynamic, so you don't
