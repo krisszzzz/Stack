@@ -139,7 +139,7 @@ unsigned __int64 RSHash(const char* test, size_t obj_size)
     unsigned __int64 b = 378551;
     unsigned __int64 hash = 0;
 
-    for (int i = 0; i < obj_size; ++i)
+    for (int i = 0; i < obj_size - kCanarySize - 1; ++i)
     {
         hash = hash * a + (unsigned __int64)test[i];
         a *= b;
