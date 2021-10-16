@@ -1,4 +1,9 @@
 ﻿
+
+#ifndef STACK_INCLUDED
+
+#define STACK_INCLUDED
+
 #include<stdlib.h>
 #include<stdio.h>
 #include<assert.h>
@@ -6,49 +11,57 @@
 #include "log.h"
 #include "debug_leveling.h"
 
+#define MAKE_STACK_INVARIANT(elem_type, condition, error_code)     \
+if(!(condition)) {                                                 \
+    GeneralInfoStack_##elem_type(stack_t);                         \
+    ERROR_PROCCESSING(error_code);                                 \
+    return kErroredStack;                                          \
+}
 
-enum WARNINGS
+enum Warnings
 {
-	STACK_UNDERFLOW,
-    INCCORECT_CAPACITY_INPUT_TO_CTOR,
-	NOT_INITIALIZED_STACK,
-    ALREADY_CONSTRUCTED
+	kStackUnderflow,
+    kInccorectCapacityInputToCtor,
+	kNotInitializedStack,
+    kAlreadyConstructed
 };
-enum ERRORS
+enum Errors
 {
-	MEMORY_ALLOCATION_ERROR = -13,
-    STACK_DATA_NULLPTR,
-    STACK_DATA_LEFT_CANARY_IS_INCCORECT,
-    STACK_DATA_RIGHT_CANARY_IS_INCCORECT,
-    STACK_DATA_HASH_IS_INCCORECT,
-    STACK_SIZE_BIGGER_THAN_CAPACITY,
-    STACK_SIZE_IS_NEGATIVE,
-    STACK_CAPACITY_IS_INCCORECT,
-    STACK_HASH_IS_INCCORECT,
-    STACK_LEFT_CANARY_IS_INCCORECT,
-    STACK_RIGHT_CANARY_IS_INCCORECT,
-	NULLPTR_STACK
+	kMemoryAllocationError = -13,
+    kStackDataNullptr,
+    kStackDataLeftCanaryIsInccorect,
+    kStackDataRightCanaryIsInccorect,
+    kStackDataHashIsInccorect,
+    kStackSizeBiggerThanCapacity,
+    kStackSizeIsNegative,
+    kStackCapacityIsInccorect,
+    kStackHashIsInccorect,
+    kStackLeftCanaryIsInccorect,
+    kStackRightCanaryIsInccorect,
+	kNullptrStack
 };
 
-const int     MIN_CAPACITY       = 8;
-const int     OFFSET_ON_DELETING = 3;
-const __int64 LEFT_CANARY_VALUE  = 0xDEDAD & 0xDEDBAD;
-const __int64 RIGHT_CANARY_VALUE = 0xDED32 & 0xDED64;
-const size_t  CANARY_SIZE        = sizeof(__int64);
-const size_t  HASH_SIZE          = sizeof(unsigned __int64);
+const int     kErroredStack      = -1;
+const int     kMinCapacity       = 8;
+const int     kOffsetOnDeleting  = 3;
+const __int64 kLeftCanaryValue   = 0xDEDAD & 0xDEDBAD;
+const __int64 kRightCanaryValue  = 0xDED32 & 0xDED64;
+const size_t  kCanarySize        = sizeof(__int64);
+const size_t  kHashSize          = sizeof(unsigned __int64);
 
 ON_DEBUG_LVL_1(
-void             WarningProccessing_ (const int warning_code, const char* function_name,
-                                      const int line);
+void             Warning_Proccessing_(const int warning_code, const char* function_name,
+                                      const int line,         const char* file_name);
 )
 
-void             ErrorsProccessing_  (const int error, const char* funct, const int line);
-int              Max                 (const int first, const int second);
-void*            recalloc            (void* block, size_t elem_count, size_t elem_size);
-unsigned __int64 RSHash              (const char* test, size_t obj_size);
-void             SetDataCanary       (char* data, size_t size_of_data);
-unsigned __int64 CalculateDataHash   (char* data, size_t size_of_data);
-void             ResetDataRightCanary(char* data, size_t size_of_data);
+void             Error_Proccessing_  (const int error,        const char* funct, 
+                                      const int line,         const char* flie_name);
+int              Max                 (const int first,        const int second);
+void*            recalloc            (void* block,            size_t elem_count, size_t elem_size);
+unsigned __int64 RSHash              (const char* test,       size_t obj_size);
+void             SetDataCanary       (char* data,             size_t size_of_data);
+unsigned __int64 CalculateDataHash   (char* data,             size_t size_of_data);
+void             ResetDataRightCanary(char* data,             size_t size_of_data);
 
 
 #define Stack_T(elem_type)                                                                                     \
@@ -71,11 +84,14 @@ struct stack_##elem_type {																					   \
 };                                                                                                             \
                                                                                                                \
                                                                                                                \
-void AssertNullptrStack_##elem_type (const stack_##elem_type * stack_t)                                        \
+int IsNullptrStack_##elem_type (const stack_##elem_type * stack_t)                                             \
 {                                                                                                              \
     if(stack_t == nullptr) {                                                                                   \
-        ErrorsProccessing(NULLPTR_STACK);                                                                      \
+        ERROR_PROCCESSING(kNullptrStack);                                                                      \
+        return 1;                                                                                              \
     }                                                                                                          \
+    else                                                                                                       \
+        return 0;                                                                                              \
 }                                                                                                              \
                                                                                                                \
 void (*SetPrinter_##elem_type(void (*printer)(const elem_type* to_print) = nullptr))(const elem_type* to_print)\
@@ -93,156 +109,169 @@ void GeneralInfoStack_##elem_type (const stack_##elem_type* stack_t,            
                                      void (*printer)(const elem_type* to_print) = nullptr)                     \
 {                                                                                                              \
     void (*ctor_printer)(const elem_type* to_print) = SetPrinter_##elem_type(printer);                         \
-    AssertNullptrStack_##elem_type(stack_t);                                                                   \
+    if(IsNullptrStack_##elem_type(stack_t))                                                                    \
+        return;                                                                                                \
                                                                                                                \
                                                                                                                \
-    PrintToLog("Stack info: stack address = %p, stack type - %s, stack size = %d, "                            \
-                 "stack capacity = %d, stack data = %p\n", stack_t, #elem_type, stack_t->size,                 \
-                                                           stack_t->capacity, stack_t->data);                  \
+    PrintToLog("-------------------------------------------------------------------------------\n");           \                                                                                                            
+    PrintToLog("Stack info:\n stack address: %p, stack type: %s, stack size: %d, "                             \
+                 "stack capacity: %d, stack data address: %p\n", stack_t, #elem_type, stack_t->size,           \
+                                                                 stack_t->capacity,   stack_t->data);          \
                                                                                                                \
     for(int elem_of_data = 0; elem_of_data < stack_t->size; ++elem_of_data)                                    \
     {                                                                                                          \
         const elem_type* current_element_address = (const elem_type*)((char*)stack_t->data +                   \
-                                                    ON_DEBUG_LVL_1( + CANARY_SIZE) +                           \
+                                                    ON_DEBUG_LVL_1( + kCanarySize) +                           \
                                                     elem_of_data * sizeof(elem_type));                         \
         PrintToLog("&[%d] == %p\n", elem_of_data, current_element_address);                                    \
         if(ctor_printer != nullptr) {                                                                          \
-            PrintToLog("*[%d] == ", elem_of_data);                                                             \
+            PrintToLog  ("*[%d] == ", elem_of_data);                                                           \
             ctor_printer(current_element_address);                                                          \
-            PrintToLog("\n");                                                                               \
+            PrintToLog  ("\n");                                                                             \
         }                                                                                                   \
                                                                                                             \
     }                                                                                                       \
                                                                                                             \
 }                                                                                                           \
                                                                                                             \
-void ValidateStack_##elem_type(const stack_##elem_type* stack_t)				                            \
+int IsInvalidStack_##elem_type(const stack_##elem_type* stack_t)				                            \
 {                                                                                                           \
-    AssertNullptrStack_##elem_type(stack_t);                                                                \
+    if(IsNullptrStack_##elem_type(stack_t))                                                                 \
+        return kErroredStack;                                                                               \
                                                                                                             \
     ON_DEBUG_LVL_1(                                                                                         \
-        if(stack_t->left_canary != LEFT_CANARY_VALUE) {                                                     \
-            ErrorsProccessing(STACK_LEFT_CANARY_IS_INCCORECT);                                              \
-        }                                                                                                   \
-        if(stack_t->right_canary != RIGHT_CANARY_VALUE) {                                                   \
-            ErrorsProccessing(STACK_RIGHT_CANARY_IS_INCCORECT);                                             \
-        }                                                                                                   \
-                                                                                                            \
+         MAKE_STACK_INVARIANT(                                                                              \
+            elem_type,                                                                                      \
+            stack_t->left_canary == kLeftCanaryValue,                                                       \
+            kStackLeftCanaryIsInccorect                                                                     \
+        )                                                                                                   \
+        MAKE_STACK_INVARIANT(                                                                               \
+            elem_type,                                                                                      \
+            stack_t->right_canary == kRightCanaryValue,                                                     \
+            kStackRightCanaryIsInccorect                                                                    \
+        )                                                                                                   \
     )                                                                                                       \
     ON_DEBUG_LVL_2(                                                                                         \
-        if(stack_t->hash != RSHash((char*)stack_t, sizeof(stack_##elem_type) - HASH_SIZE)) {                \
-        GeneralInfoStack_##elem_type(stack_t);                                                              \
-        ErrorsProccessing(STACK_HASH_IS_INCCORECT);                                                         \
-                                                                                                            \
-    }                                                                                                       \
+    MAKE_STACK_INVARIANT(                                                                                   \
+        elem_type,                                                                                          \
+        stack_t->hash == RSHash((char*)stack_t, sizeof(stack_##elem_type) - kHashSize),                     \
+        kStackHashIsInccorect                                                                               \
     )                                                                                                       \
-                                                                                                            \
-    if(stack_t->size < 0) {                                                                                 \
-        GeneralInfoStack_##elem_type(stack_t);                                                              \
-        ErrorsProccessing(STACK_SIZE_IS_NEGATIVE);                                                          \
-    }                                                                                                       \
-	if(stack_t->size > stack_t->capacity) {                                                                 \
-        GeneralInfoStack_##elem_type(stack_t);                                                              \
-        ErrorsProccessing(STACK_SIZE_BIGGER_THAN_CAPACITY);                                                 \
-    }                                                                                                       \
-    if(stack_t->data == nullptr) {                                                                          \
-        GeneralInfoStack_##elem_type(stack_t);                                                              \
-        ErrorsProccessing(STACK_DATA_NULLPTR);                                                              \
-    }                                                                                                       \
-    if(stack_t->capacity < MIN_CAPACITY) {                                                                  \
-        GeneralInfoStack_##elem_type(stack_t);                                                              \
-        ErrorsProccessing(STACK_CAPACITY_IS_INCCORECT);                                                     \
-    }                                                                                                       \
+    )                                                                                                       \
+     MAKE_STACK_INVARIANT(                                                                                  \
+        elem_type,                                                                                          \
+        stack_t->size <= stack_t->capacity,                                                                 \
+        kStackSizeBiggerThanCapacity                                                                        \
+    )                                                                                                       \
+    MAKE_STACK_INVARIANT(                                                                                   \
+        elem_type,                                                                                          \
+        stack_t->data != nullptr,                                                                           \
+        kStackDataNullptr                                                                                   \
+    )                                                                                                       \
+    MAKE_STACK_INVARIANT(                                                                                   \
+        elem_type,                                                                                          \
+        stack_t->size >= 0,                                                                                 \
+        kStackSizeIsNegative                                                                                \
+    )                                                                                                       \
+    MAKE_STACK_INVARIANT(                                                                                   \
+        elem_type,                                                                                          \
+        stack_t->capacity >= kMinCapacity,                                                                  \
+        kStackCapacityIsInccorect                                                                           \
+    )                                                                                                       \
     ON_DEBUG_LVL_1(                                                                                         \
         size_t all_elements_size = stack_t->capacity * sizeof(elem_type);                                   \
                                                                                                             \
-        if(*(__int64*)stack_t->data != LEFT_CANARY_VALUE) {                                                 \
-            GeneralInfoStack_##elem_type(stack_t);                                                          \
-            ErrorsProccessing(STACK_DATA_LEFT_CANARY_IS_INCCORECT);                                         \
-        }                                                                                                   \
-        char* stack_data_right_canary = (char*)stack_t->data + all_elements_size + CANARY_SIZE;             \
-                                                                                                            \
-        if(*(__int64*)stack_data_right_canary != RIGHT_CANARY_VALUE) {                                      \
-            GeneralInfoStack_##elem_type(stack_t);                                                          \
-            ErrorsProccessing(STACK_DATA_RIGHT_CANARY_IS_INCCORECT);                                        \
-        }                                                                                                   \
-                                                                                                            \
+        MAKE_STACK_INVARIANT(                                                                               \
+            elem_type,                                                                                      \
+            *(__int64*)stack_t->data == kLeftCanaryValue,                                                   \
+            kStackDataLeftCanaryIsInccorect                                                                 \
+        )                                                                                                   \
+        char* stack_data_right_canary = (char*)stack_t->data + all_elements_size + kCanarySize;             \
+        MAKE_STACK_INVARIANT(                                                                               \
+            elem_type,                                                                                      \
+            *(__int64*)stack_data_right_canary == kRightCanaryValue,                                        \
+            kStackDataRightCanaryIsInccorect                                                                \
+        )                                                                                                   \
     )                                                                                                       \
                                                                                                             \
     ON_DEBUG_LVL_2(                                                                                         \
-        char* data_hash = (char*)stack_t->data + all_elements_size + STACK_USE_CANARY * CANARY_SIZE;        \
+        char* data_hash = (char*)stack_t->data + all_elements_size + STACK_USE_CANARY * kCanarySize;        \
                                                                                                             \
-        if(*(unsigned __int64*)data_hash != CalculateDataHash((char*) stack_t->data,                        \
-                                                               all_elements_size)) {                        \
-                                                                                                            \
-             GeneralInfoStack_##elem_type(stack_t);                                                         \
-             ErrorsProccessing(STACK_DATA_HASH_IS_INCCORECT);                                               \
-        }                                                                                                   \
-                                                                                                            \
+        MAKE_STACK_INVARIANT(                                                                               \
+            elem_type,                                                                                      \
+            *(unsigned __int64*)data_hash == CalculateDataHash((char*) stack_t->data,                       \
+                                                               all_elements_size),                          \
+            kStackDataHashIsInccorect                                                                       \                                                   
+        )                                                                                                   \
     )                                                                                                       \
                                                                                                             \
+    return 0;                                                                                               \                                                                                                        
 }                                                                                                           \
                                                                                                             \
 void SafeGeneralInfoStack_##elem_type(const stack_##elem_type* stack_t,                                     \
                                       void (*printer)(const elem_type* to_print) = nullptr)                 \
 {                                                                                                           \
-    ValidateStack_##elem_type(stack_t);                                                                     \
+    if(IsInvalidStack_##elem_type(stack_t) == kErroredStack)                                                \
+        return;                                                                                             \
     GeneralInfoStack_##elem_type(stack_t, printer);                                                         \
 }                                                                                                           \
                                                                                                             \
-void CtorStack_##elem_type(stack_##elem_type* stack_t, ssize_t capacity = MIN_CAPACITY,					    \
+void CtorStack_##elem_type(stack_##elem_type* stack_t, ssize_t capacity = kMinCapacity,					    \
                             void (*printer)(const elem_type* to_print) = nullptr)                           \
 {                                                                                                           \
-    AssertNullptrStack_##elem_type(stack_t);                                                                \
+    if(IsNullptrStack_##elem_type(stack_t))                                                                 \
+        return;                                                                                             \
     ON_DEBUG_LVL_1(                                                                                         \
-        if(stack_t->left_canary == LEFT_CANARY_VALUE || stack_t->right_canary == RIGHT_CANARY_VALUE) {      \
-            WarningProccessing(ALREADY_CONSTRUCTED);                                                        \
+        if(stack_t->left_canary == kLeftCanaryValue || stack_t->right_canary == kRightCanaryValue) {        \
+            WARNING_PROCCESSING(kAlreadyConstructed);                                                       \
             return;                                                                                         \
         }                                                                                                   \
     )                                                                                                       \
                                                                                                             \
     ON_DEBUG_LVL_1(                                                                                         \
         if(capacity < 0) {                                                                                  \
-            WarningProccessing(INCCORECT_CAPACITY_INPUT_TO_CTOR);                                           \
+            WARNING_PROCCESSING(kInccorectCapacityInputToCtor);                                             \
         }                                                                                                   \
                                                                                                             \
 		stack_##elem_type null_initialized = {0};                                                           \
 		if(memcmp(stack_t, &null_initialized, sizeof(elem_type)) != 0) {                                    \
-			WarningProccessing(NOT_INITIALIZED_STACK);                                                      \
+			WARNING_PROCCESSING(kNotInitializedStack);                                                      \
         }                                                                                                   \
                                                                                                             \
 		*stack_t = null_initialized; 																		\
     )                                                                                                       \
                                                                                                             \
-    int to_alloc_capacity        = Max(MIN_CAPACITY, capacity);                                             \
+    int to_alloc_capacity        = Max(kMinCapacity, capacity);                                             \
     size_t all_elements_size     = to_alloc_capacity * sizeof(elem_type);                                   \
     elem_type* data              = nullptr;                                                                 \
                                                                                                             \
 	stack_t->capacity            = to_alloc_capacity;                                                       \
 	stack_t->size                = 0;               														\
-    data                         = (elem_type*)calloc(all_elements_size + STACK_PROT * CANARY_SIZE,         \
+    data                         = (elem_type*)calloc(all_elements_size + STACK_PROT * kCanarySize,         \
                                     sizeof(char));                                                          \
                                                                                                             \
     if(data == nullptr) {                                                                                   \
-        ErrorsProccessing(MEMORY_ALLOCATION_ERROR);                                                         \
+        ERROR_PROCCESSING(kMemoryAllocationError);                                                          \
+        return;                                                                                             \
     }                                                                                                       \
     ON_DEBUG_LVL_1(                                                                                         \
         SetDataCanary((char*)data, all_elements_size);                                                      \
-        stack_t->left_canary  = LEFT_CANARY_VALUE;                                                          \
-        stack_t->right_canary = RIGHT_CANARY_VALUE;                                                         \
+        stack_t->left_canary  = kLeftCanaryValue;                                                           \
+        stack_t->right_canary = kRightCanaryValue;                                                          \
     )                                                                                                       \
                                                                                                             \
     stack_t->data = data;                                                                                   \
                                                                                                             \
     ON_DEBUG_LVL_2(                                                                                                 \
-        stack_t->hash                 = RSHash((char*)stack_t, sizeof(stack_##elem_type) - HASH_SIZE);              \
-        char* data_hash               = (char*)stack_t->data + all_elements_size + STACK_USE_CANARY * CANARY_SIZE;  \
+        stack_t->hash                 = RSHash((char*)stack_t, sizeof(stack_##elem_type) - kHashSize);              \
+        char* data_hash               = (char*)stack_t->data + all_elements_size + STACK_USE_CANARY * kCanarySize;  \
         *(unsigned __int64*)data_hash = CalculateDataHash((char*)data, all_elements_size);                          \
     )                                                                                                               \
                                                                                                             \
                                                                                                             \
                                                                                                             \
-	ValidateStack_##elem_type(stack_t);                                                                     \
+	if(IsInvalidStack_##elem_type(stack_t) == kErroredStack)                                                \
+        return;                                                                                             \
     GeneralInfoStack_##elem_type(stack_t, printer);                                                         \
     PrintToLog("Construction are successfull\n");                                                           \
                                                                                                             \
@@ -251,9 +280,10 @@ void CtorStack_##elem_type(stack_##elem_type* stack_t, ssize_t capacity = MIN_CA
                     																				        \
 void StackPush_##elem_type(stack_##elem_type* stack_t, elem_type* value)		                            \
 {                                                                                                           \
-    ValidateStack_##elem_type(stack_t);                                                                     \
+    if(IsInvalidStack_##elem_type(stack_t) == kErroredStack)                                                \       
+        return;                                                                                             \
     ON_DEBUG_LVL_1(                                                                                         \
-        PrintToLog("The push function has been called, name of the function - %s\n",                        \
+        PrintToLog("Push function has been called by function - %s\n",                                      \
                       __PRETTY_FUNCTION__);                                                                 \
     )                                                                                                       \
     ON_DEBUG_LVL_2(                                                                                         \
@@ -263,11 +293,12 @@ void StackPush_##elem_type(stack_##elem_type* stack_t, elem_type* value)		      
     if(stack_t->size == stack_t->capacity) {                                                                \
         size_t all_elements_size = stack_t->capacity * sizeof(elem_type);                                   \
         elem_type* data = (elem_type*)recalloc(stack_t->data,                                               \
-                                               2 * all_elements_size + STACK_PROT * CANARY_SIZE,            \
+                                               2 * all_elements_size + STACK_PROT * kCanarySize,            \
                                                sizeof(char));                                               \
                                                                                                             \
         if(data == nullptr) {                                                                               \
-            ErrorsProccessing(MEMORY_ALLOCATION_ERROR);                                                     \
+            ERROR_PROCCESSING(kMemoryAllocationError);                                                      \
+            return;                                                                                         \
         }                                                                                                   \
         ON_DEBUG_LVL_1(                                                                                     \
             ResetDataRightCanary((char*)data, all_elements_size);                                           \
@@ -283,16 +314,16 @@ void StackPush_##elem_type(stack_##elem_type* stack_t, elem_type* value)		      
     }                                                                                                       \
                                                                                                             \
     elem_type* after_extreme_element_address = (elem_type*)((char*)stack_t->data                            \
-                                                            ON_DEBUG_LVL_1( + CANARY_SIZE) +                \
+                                                            ON_DEBUG_LVL_1( + kCanarySize) +                \
                                                             stack_t->size * sizeof(elem_type));             \
     *after_extreme_element_address = *value;                                                                \
     stack_t->size++;                                                                                        \
                                                                                                             \
     ON_DEBUG_LVL_2(                                                                                         \
        size_t all_elements_size = stack_t->capacity * sizeof(elem_type);                                    \
-       stack_t->hash = RSHash((char*)stack_t, sizeof(stack_##elem_type) - HASH_SIZE);                       \
+       stack_t->hash = RSHash((char*)stack_t, sizeof(stack_##elem_type) - kHashSize);                       \
        char* data_hash = (char*)stack_t->data + all_elements_size +                                         \
-                               2 * CANARY_SIZE;                                                             \
+                               2 * kCanarySize;                                                             \
        *(unsigned __int64*)data_hash = CalculateDataHash((char*)stack_t->data,                              \
                                                           all_elements_size);                               \
     )                                                                                                       \
@@ -318,26 +349,28 @@ void StackPush_##elem_type(stack_##elem_type* stack_t, elem_type* value)		      
                                                                                                             \
 int IsEmptyStack_##elem_type(stack_##elem_type* stack_t)										            \
 {																									        \
-    ValidateStack_##elem_type(stack_t);                                                                     \
-                                                                                                            \
     return (stack_t->size == 0) ? 1 : 0;																    \
 }                                                                                                           \
                                                                                                             \
 elem_type StackPop_##elem_type(stack_##elem_type* stack_t)					                                \
 {                                                                                                           \
-    ValidateStack_##elem_type(stack_t);                                                                     \
+    if(IsInvalidStack_##elem_type(stack_t) == kErroredStack)                                                \
+        {                                                                                                   \
+            elem_type not_initialized_object;                                                               \
+            return not_initialized_object;                                                                  \
+        }                                                                                                   \
     void (*pop_printer)(const elem_type* to_print) = SetPrinter_##elem_type();					            \
                                                                                                             \
 	if(!IsEmptyStack_##elem_type(stack_t)) {													            \
-		if((stack_t->size <= stack_t->capacity / 2 - OFFSET_ON_DELETING) &&                                 \
-            stack_t->capacity / 2 >= MIN_CAPACITY) {                                                        \
+		if((stack_t->size <= stack_t->capacity / 2 - kOffsetOnDeleting) &&                                  \
+            stack_t->capacity / 2 >= kMinCapacity) {                                                        \
             size_t all_elements_size = stack_t->capacity * sizeof(elem_type);                               \
 			elem_type* data = (elem_type*)recalloc(stack_t->data,                                           \
                                                    all_elements_size / 2                                    \
-                                                   + STACK_PROT * CANARY_SIZE, sizeof(char));               \
+                                                   + STACK_PROT * kCanarySize, sizeof(char));               \
                                                                                                             \
 			if(data == nullptr) {                                                                           \
-                ErrorsProccessing(MEMORY_ALLOCATION_ERROR);                                                 \
+                ERROR_PROCCESSING(kMemoryAllocationError);                                                  \
 			}                                                                                               \
 			ON_DEBUG_LVL_1(                                                                                 \
                 SetDataCanary((char*)data, all_elements_size / 2);                                          \
@@ -349,7 +382,7 @@ elem_type StackPop_##elem_type(stack_##elem_type* stack_t)					                 
                                                                                                             \
         ON_DEBUG_LVL_1(                                                                                     \
             ssize_t element_in_data_index      = stack_t->size - 1;                                         \
-            elem_type* extreme_element_address = (elem_type*)((char*)stack_t->data + CANARY_SIZE +          \
+            elem_type* extreme_element_address = (elem_type*)((char*)stack_t->data + kCanarySize +          \
                                                                element_in_data_index * sizeof(elem_type));  \
                                                                                                             \
 			elem_type extreme_element_value    =  *(extreme_element_address);                               \
@@ -370,10 +403,10 @@ elem_type StackPop_##elem_type(stack_##elem_type* stack_t)					                 
                                                                                                             \
 			ON_DEBUG_LVL_2(                                                                                 \
                 size_t all_elements_size        = stack_t->capacity * sizeof(elem_type);                    \
-                stack_t->hash                   = RSHash((char*)stack_t, sizeof(stack_##elem_type) - HASH_SIZE);\
-                char* data_hash                 = (char*)stack_t->data + all_elements_size +                \
-                                                   STACK_USE_CANARY * CANARY_SIZE;                          \
-                *(unsigned __int64*) data_hash  = CalculateDataHash((char*)stack_t->data, all_elements_size); \
+                stack_t->hash                   = RSHash((char*)stack_t, sizeof(stack_##elem_type) - kHashSize);\
+                char* data_hash                 = (char*)stack_t->data + all_elements_size +                    \
+                                                   STACK_USE_CANARY * kCanarySize;                              \
+                *(unsigned __int64*) data_hash  = CalculateDataHash((char*)stack_t->data, all_elements_size);   \
                 GeneralInfoStack_##elem_type(stack_t);                                                      \
             )                                                                                               \
 			return extreme_element_value;                                                                   \
@@ -384,7 +417,7 @@ elem_type StackPop_##elem_type(stack_##elem_type* stack_t)					                 
 	} else {																								\
         ON_DEBUG_LVL_1(                                                                                     \
 	    elem_type null_initialized = {0};																	\
-	    WarningProccessing(STACK_UNDERFLOW);                                                                \
+	    WARNING_PROCCESSING(kStackUnderflow);                                                               \
 		return null_initialized;																			\
         )                                                                                                   \
     }																										\
@@ -392,7 +425,8 @@ elem_type StackPop_##elem_type(stack_##elem_type* stack_t)					                 
 void DtorStack_##elem_type(stack_##elem_type* stack_t)							                            \
 {                                                                                                           \
     PrintToLog("Destructor call for stack: \n");                                                            \
-    ValidateStack_##elem_type(stack_t);                                                                     \
+    if(IsInvalidStack_##elem_type(stack_t) == kErroredStack)                                                \
+        return;                                                                                             \
     GeneralInfoStack_##elem_type(stack_t);															        \
                                                                                                             \
     stack_t->size = stack_t->capacity = 0;                                                                  \
@@ -409,23 +443,26 @@ void DtorStack_##elem_type(stack_##elem_type* stack_t)							                   
     PrintToLog("Object destructed, you can reuse it, please use constructor for this case\n");              \
 }
 
+#endif
+
+
 /*!@file    Stack.h
-   \brief The core of the program. Here is the stack template - a macro analogue of C ++ templates for the C programming language.
+   \brief The core of the program. Here is the stack template - a macros analogue of C ++ templates for the C programming language.
    @par   How to use?
    @note Instruction:
-         1. When you start a project write stack template (elem_type) where elem_type is the type of object for which you need a stack.
+         1. When you start a project write Stack_T (elem_type) where elem_type is the type of object for which you need a stack.
          Also, do not forget that if you want to use the program already as ready-made and tested, then set the DEBUG_LEVEL value to 0,
          this will mean that the program is in the release state.
          2. After that, the program will build the necessary structure, which will be called struct_elem_type where elem_type is the type
          of the object for which the stack was created.
-         3. In total, the program creates 9 functions: IsEmptyStackelem_type, DtorStackelem_type, StackPushelem_type, StackPopelem_type,
-         CtorStack##elem_type, Validation, GeneralInfoelem_type, AssertNullptrStack##elem_typestack_elem_type - where
+         3. In total, the program creates 9 functions: IsEmptyStack_elem_type, DtorStack_elem_type, StackPush_elem_type, StackPop_elem_type,
+         CtorStack_elem_type, IsInvalidStack_elem_type, GeneralInfoStack_elem_type, IsNullptrStack_elem_type - where
          elem_type is the type of object for which you need stack.
          4. Write an inference function of your type to improve debugging
-         5. Use these functions to work with the stack, and do not forget to call DtorStackelem_type after work - that is, the stack destructor
+         5. Use these functions to work with the stack, and do not forget to call DtorStack_elem_type after work - that is, the stack destructor
 Stack functions description: (Throughout we will assume that elem_type is the type of the element for which the stack was built.)
          6. for debugging see documentation for stack_macros.h
-  @par   void CtorStack##elem_type(stack_elem_type* to_ctor, ssize_t capacity = 8,void (*printer)(elem_type* to_print) = nullptr)
+  @par   void CtorStack_elem_type(stack_elem_type* to_ctor, ssize_t capacity = 8,void (*printer)(elem_type* to_print) = nullptr)
   Constructor of stack, using a stack without a constructor is an error that can cause the program to close.
   @param[to_ctor] - This is the stack you need to build
   @param[capacity] - the capacity of the stack, that is, the number of elements that the stack can store. Note that the stack is dynamic, so you don't
@@ -454,7 +491,7 @@ Use this function wisely, because if the stack pointer is null, the program will
   @param[(*printer)] -  It is inside this function that the stack calls SetPrinterelem_type, that is,
   in this function it sets up the print function, which is passed through the constructor as an argument to this function.
   @return  - its a void-type function, so nothing will be returned
-  @par void AssertNullptrStack##elem_typestack_elem_type(const stack_elem_type* stack_t)
+  @par void IsNullptrStack##elem_typestack_elem_type(const stack_elem_type* stack_t)
   Checks stack_t if it is a null pointer, if yes, then the program is closed
   @param[stack_t] - a pointer to the stack, which is checked against a null pointer
   @return - its a void-type function, so nothing will be returned

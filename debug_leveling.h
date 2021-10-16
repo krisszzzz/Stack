@@ -2,6 +2,7 @@
 
 #define STACK_USE_HASH   0x01
 #define STACK_USE_CANARY 0x02
+#define STACK_USE_ASSERT
 
 #if DEBUG_LVL == 2
 #define ON_DEBUG_LVL_2(code)  code
@@ -20,10 +21,10 @@
 #endif
 
 #if DEBUG_LVL >= 1
-#define WarningProccessing(warning_code)                          \
-WarningProccessing_(warning_code, __PRETTY_FUNCTION__, __LINE__)
+#define WARNING_PROCCESSING(warning_code)                          \
+Warning_Proccessing_(warning_code, __PRETTY_FUNCTION__, __LINE__, __FILE__)
 #endif
 
 
-#define ErrorsProccessing(error_code)                             \
-ErrorsProccessing_(error_code, __PRETTY_FUNCTION__, __LINE__)
+#define ERROR_PROCCESSING(error_code)                             \
+Error_Proccessing_(error_code, __PRETTY_FUNCTION__, __LINE__, __FILE__)

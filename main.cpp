@@ -10,6 +10,7 @@ void printer(const int* to_pr)
 
 Stack_T(int)
 
+
 void RunUnitTests(int* array, int array_size, void (*printer)(const int*));
 int main()
 {
@@ -34,6 +35,7 @@ void RunUnitTests(int* array, int array_size, void (*printer)(const int*))
     stack_int integer_stack = {};
     CtorStack_int(&integer_stack, 10, printer);     // Check the Ctor and Dtor works. Also check what happen when ctor and dtor multiple called
     CtorStack_int(&integer_stack);                // We allow you to reuse your after destruction, but use Ctor to correct work
+    integer_stack.data = nullptr;
     //DtorStack_int(&integer_stack);                // Multiple Ctor calling is bad, but the program guarantees that it will continue
     DtorStack_int(&integer_stack);                // its work, but you will lose access to the data of the previous constructed stack
     CtorStack_int(&integer_stack, 10);            // Multiple Dtor calling will close your program with error
@@ -42,8 +44,8 @@ void RunUnitTests(int* array, int array_size, void (*printer)(const int*))
         StackPush_int(&integer_stack, &array[stack_size_count]);
 
     IsEmptyStack_int        (&integer_stack);           // Test all stack functions. Warning: don't use GeneralInfoStack_int, use SafeGeneralInfoStack_int instead
-    ValidateStack_int       (&integer_stack);          // For description of all function watch the documantion
-    AssertNullptrStack_int  (&integer_stack);     //
+    IsInvalidStack_int      (&integer_stack);          // For description of all function watch the documantion
+    IsNullptrStack_int      (&integer_stack);     //
     GeneralInfoStack_int    (&integer_stack);       //
     SafeGeneralInfoStack_int(&integer_stack);
 
