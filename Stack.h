@@ -11,10 +11,10 @@
 #include "log.h"
 #include "debug_leveling.h"
 
-#define MAKE_STACK_INVARIANT(elem_type, condition)                 \
+#define MAKE_STACK_INVARIANT(elem_type, condition, error_code)     \
 if(!(condition)) {                                                 \
     GeneralInfoStack_##elem_type(stack_t);                         \
-    ERROR_PROCCESSING(kStackHashIsInccorect);                      \
+    ERROR_PROCCESSING(error_code);                                 \
     return kErroredStack;                                          \
 }
 
@@ -30,7 +30,7 @@ enum Errors
 	kMemoryAllocationError = -13,
     kStackDataNullptr,
     kStackDataLeftCanaryIsInccorect,
-    kStackRightLeftCanaryIsInccorect,
+    kStackDataRightCanaryIsInccorect,
     kStackDataHashIsInccorect,
     kStackSizeBiggerThanCapacity,
     kStackSizeIsNegative,
@@ -142,46 +142,55 @@ int IsInvalidStack_##elem_type(const stack_##elem_type* stack_t)				            
     ON_DEBUG_LVL_1(                                                                                         \
          MAKE_STACK_INVARIANT(                                                                              \
             elem_type,                                                                                      \
-            stack_t->left_canary == kLeftCanaryValue                                                        \
+            stack_t->left_canary == kLeftCanaryValue,                                                       \
+            kStackLeftCanaryIsInccorect                                                                     \
         )                                                                                                   \
         MAKE_STACK_INVARIANT(                                                                               \
             elem_type,                                                                                      \
-            stack_t->right_canary == kRightCanaryValue                                                      \
+            stack_t->right_canary == kRightCanaryValue,                                                     \
+            kStackRightCanaryIsInccorect                                                                    \
         )                                                                                                   \
     )                                                                                                       \
     ON_DEBUG_LVL_2(                                                                                         \
     MAKE_STACK_INVARIANT(                                                                                   \
         elem_type,                                                                                          \
-        stack_t->hash == RSHash((char*)stack_t, sizeof(stack_##elem_type) - kHashSize)                      \
+        stack_t->hash == RSHash((char*)stack_t, sizeof(stack_##elem_type) - kHashSize),                     \
+        kStackHashIsInccorect                                                                               \
     )                                                                                                       \
     )                                                                                                       \
      MAKE_STACK_INVARIANT(                                                                                  \
         elem_type,                                                                                          \
-        stack_t->size <= stack_t->capacity                                                                  \
+        stack_t->size <= stack_t->capacity,                                                                 \
+        kStackSizeBiggerThanCapacity                                                                        \
     )                                                                                                       \
     MAKE_STACK_INVARIANT(                                                                                   \
         elem_type,                                                                                          \
-        stack_t->data != nullptr                                                                            \
+        stack_t->data != nullptr,                                                                           \
+        kStackDataNullptr                                                                                   \
     )                                                                                                       \
     MAKE_STACK_INVARIANT(                                                                                   \
         elem_type,                                                                                          \
-        stack_t->size >= 0                                                                                  \
+        stack_t->size >= 0,                                                                                 \
+        kStackSizeIsNegative                                                                                \
     )                                                                                                       \
     MAKE_STACK_INVARIANT(                                                                                   \
         elem_type,                                                                                          \
-        stack_t->capacity >= kMinCapacity                                                                   \
+        stack_t->capacity >= kMinCapacity,                                                                  \
+        kStackCapacityIsInccorect                                                                           \
     )                                                                                                       \
     ON_DEBUG_LVL_1(                                                                                         \
         size_t all_elements_size = stack_t->capacity * sizeof(elem_type);                                   \
                                                                                                             \
         MAKE_STACK_INVARIANT(                                                                               \
             elem_type,                                                                                      \
-            *(__int64*)stack_t->data == kLeftCanaryValue                                                    \
+            *(__int64*)stack_t->data == kLeftCanaryValue,                                                   \
+            kStackDataLeftCanaryIsInccorect                                                                 \
         )                                                                                                   \
         char* stack_data_right_canary = (char*)stack_t->data + all_elements_size + kCanarySize;             \
         MAKE_STACK_INVARIANT(                                                                               \
             elem_type,                                                                                      \
-            *(__int64*)stack_data_right_canary == kRightCanaryValue                                         \
+            *(__int64*)stack_data_right_canary == kRightCanaryValue,                                        \
+            kStackDataRightCanaryIsInccorect                                                                \
         )                                                                                                   \
     )                                                                                                       \
                                                                                                             \
@@ -191,7 +200,8 @@ int IsInvalidStack_##elem_type(const stack_##elem_type* stack_t)				            
         MAKE_STACK_INVARIANT(                                                                               \
             elem_type,                                                                                      \
             *(unsigned __int64*)data_hash == CalculateDataHash((char*) stack_t->data,                       \
-                                                               all_elements_size)                           \
+                                                               all_elements_size),                          \
+            kStackDataHashIsInccorect                                                                       \                                                   
         )                                                                                                   \
     )                                                                                                       \
                                                                                                             \
@@ -360,7 +370,7 @@ elem_type StackPop_##elem_type(stack_##elem_type* stack_t)					                 
                                                    + STACK_PROT * kCanarySize, sizeof(char));               \
                                                                                                             \
 			if(data == nullptr) {                                                                           \
-                ERROR_PROCCESSING(kMemoryAllocationError);                                                 \
+                ERROR_PROCCESSING(kMemoryAllocationError);                                                  \
 			}                                                                                               \
 			ON_DEBUG_LVL_1(                                                                                 \
                 SetDataCanary((char*)data, all_elements_size / 2);                                          \

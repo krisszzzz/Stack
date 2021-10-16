@@ -58,19 +58,19 @@ void Error_Proccessing_(const int error_code, const char* function_name, const i
                 break;
         }
         case kStackDataHashIsInccorect:  {
-                PrintToLog("error description: your stack data was corrupted, the program was stopped\n");
+                PrintToLog("error description: your stack data was corrupted, stack data hash was changed\n");
                 break;
         }
         case kStackDataLeftCanaryIsInccorect:  {
                 PrintToLog("error description: stack left canary (for data) has been changed\n");
                 break;
         }
-        case kStackRightLeftCanaryIsInccorect:  {
+        case kStackDataRightCanaryIsInccorect:  {
                 PrintToLog("error description: stack right canary (for data) has been changed\n");
                 break;
         }
         case kStackHashIsInccorect:  {
-                PrintToLog("error description: your stack was corrupted, hash was changed\n");
+                PrintToLog("error description: your stack was corrupted, stack hash was changed\n");
                 break;
         }
         case kStackSizeIsNegative: {
@@ -132,17 +132,9 @@ unsigned __int64 CalculateDataHash(char* data, size_t size_of_data)
     return RSHash((char*)data, size_of_data + STACK_USE_CANARY * kCanarySize);
 }
 
-)
 
-/*
-void ResetDataHash(char* data, size_t size_of_data)
-{
-    char* hash_address      = data + size_of_data + STACK_USE_CANARY * kCanarySize;
-    *(__int64*)hash_address = 0;
-}
-*/
-unsigned __int64 RSHash(const char* test, size_t obj_size)                     //!--------------------------------------------------------------------------------------
-{                                                                               //! 
+unsigned __int64 RSHash(const char* test, size_t obj_size)                     
+{                                                                               
     unsigned __int64 a = 63689;
     unsigned __int64 b = 378551;
     unsigned __int64 hash = 0;
@@ -155,3 +147,7 @@ unsigned __int64 RSHash(const char* test, size_t obj_size)                     /
 
     return hash;
 }
+
+)
+
+
